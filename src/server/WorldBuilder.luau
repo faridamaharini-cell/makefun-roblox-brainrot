@@ -7,6 +7,9 @@
 -- grey z-fight), and a little town grew around the plaza: a detailed barn,
 -- shops and houses with pitched roofs, a gatehouse, wooden fences along
 -- the conveyor, round trees, bushes, crates, barrels and hay bales.
+-- v3.4: the houses are two-storey and taller (HS 2.5), six tall trees sway
+-- at the map edges, and ambient animals (a cow, a pig, a chicken, two
+-- birds) wander and orbit — one cheap animation loop drives them all.
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
@@ -41,6 +44,15 @@ local BEACH_TOP_Y = 0.2
 -- around each building's own ground centre. Every building helper
 -- multiplies its widths, heights and offsets by BS.
 local BS = 1.8
+
+-- Houses are bigger and taller still (v3.4): their own scale HS ~2.5x the
+-- original house, with extra-tall walls and a taller pitched roof, so they
+-- read as two-storey houses towering over the player (and over the barn).
+-- The corridor between the fences (X ±9) and the base platforms (X ±33)
+-- is only ~24 studs wide, so the house porch is shallower than the other
+-- buildings' and the houses sit at X ±27; their Z span stays inside the
+-- gap between base rows, so they never touch a base platform.
+local HS = 2.5
 
 local function part(name, size, color, position, parent, material, collide)
 	local p = Instance.new("Part")
@@ -130,60 +142,74 @@ end
 -- Pitched roof: two slanted panels meeting at a ridge, plus a ridge beam.
 -- `center` is the ridge centre; halfSpan is the horizontal distance from
 -- ridge to eave (including overhang), rise is eave-to-ridge height, len is
--- the roof length along the ridge. ridgeAxis "X" or "Z".
-local function pitchedRoof(parent, center, halfSpan, rise, len, color, ridgeAxis)
+-- the roof length along the ridge. ridgeAxis "X" or "Z". `scale` sizes the
+-- panel thickness and ridge beam (defaults to BS; houses pass HS).
+local function pitchedRoof(parent, center, halfSpan, rise, len, color, ridgeAxis, scale)
+	scale = scale or BS
 	local slopeLen = math.sqrt(halfSpan * halfSpan + rise * rise) + 0.4
 	local angle = math.atan(rise / halfSpan)
 	for _, side in ipairs({ -1, 1 }) do
 		local panel
 		if ridgeAxis == "X" then
-			panel = part("RoofPanel", Vector3.new(len, 0.4 * BS, slopeLen), color, center + Vector3.new(0, -rise / 2, side * halfSpan / 2), parent, Enum.Material.SmoothPlastic, false)
+			panel = part("RoofPanel", Vector3.new(len, 0.4 * scale, slopeLen), color, center + Vector3.new(0, -rise / 2, side * halfSpan / 2), parent, Enum.Material.SmoothPlastic, false)
 			panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(side * angle, 0, 0)
 		else
-			panel = part("RoofPanel", Vector3.new(slopeLen, 0.4 * BS, len), color, center + Vector3.new(side * halfSpan / 2, -rise / 2, 0), parent, Enum.Material.SmoothPlastic, false)
+			panel = part("RoofPanel", Vector3.new(slopeLen, 0.4 * scale, len), color, center + Vector3.new(side * halfSpan / 2, -rise / 2, 0), parent, Enum.Material.SmoothPlastic, false)
 			panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(0, 0, -side * angle)
 		end
 	end
 	if ridgeAxis == "X" then
-		part("RidgeBeam", Vector3.new(len, 0.6 * BS, 0.6 * BS), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
+		part("RidgeBeam", Vector3.new(len, 0.6 * scale, 0.6 * scale), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
 	else
-		part("RidgeBeam", Vector3.new(0.6 * BS, 0.6 * BS, len), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
+		part("RidgeBeam", Vector3.new(0.6 * scale, 0.6 * scale, len), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
 	end
 end
 
 -- A window on a wall facing +/-X: white frame + light-blue glass.
-local function xWindow(parent, x, y, z, facing)
-	part("WindowFrame", Vector3.new(0.2 * BS, 2.2 * BS, 2.6 * BS), Color3.fromRGB(255, 255, 255), Vector3.new(x + facing * 0.1 * BS, y, z), parent, Enum.Material.SmoothPlastic, false)
-	part("WindowGlass", Vector3.new(0.26 * BS, 1.8 * BS, 2.2 * BS), Color3.fromRGB(150, 210, 255), Vector3.new(x + facing * 0.14 * BS, y, z), parent, Enum.Material.Glass, false)
+-- `scale` sizes the frame and glass (defaults to BS; houses pass HS).
+local function xWindow(parent, x, y, z, facing, scale)
+	scale = scale or BS
+	part("WindowFrame", Vector3.new(0.2 * scale, 2.2 * scale, 2.6 * scale), Color3.fromRGB(255, 255, 255), Vector3.new(x + facing * 0.1 * scale, y, z), parent, Enum.Material.SmoothPlastic, false)
+	part("WindowGlass", Vector3.new(0.26 * scale, 1.8 * scale, 2.2 * scale), Color3.fromRGB(150, 210, 255), Vector3.new(x + facing * 0.14 * scale, y, z), parent, Enum.Material.Glass, false)
 end
 
--- A detailed beach house: wood walls, white base trim, door + windows on
--- the conveyor-facing side, pitched roof with ridge beam, chimney, and a
--- little porch (floor, posts, striped awning). facing +1 = front toward
--- +X, -1 = front toward -X.
+-- A detailed two-storey beach house (v3.4: HS ~2.5x, extra-tall walls and
+-- roof so it towers over the player and the barn): wood walls, white base
+-- trim and a mid trim band, door + two rows of framed windows (ground and
+-- second floor) on the conveyor-facing side, tall pitched roof with ridge
+-- beam, chimney, and a little porch (floor, posts, striped awning). The
+-- porch is shallower than the other buildings' so it clears the fences.
+-- facing +1 = front toward +X, -1 = front toward -X.
 local function house(parent, pos, wallColor, roofColor, facing, index)
 	local home = Instance.new("Folder")
 	home.Name = "House" .. index
 	home.Parent = parent
-	local W, D, H = 10 * BS, 8 * BS, 7 * BS
+	local W, D, H = 10 * HS, 8 * HS, 9 * HS
 	local baseY = BEACH_TOP_Y
 	part("Walls", Vector3.new(W, H, D), wallColor, pos + Vector3.new(0, baseY + H / 2, 0), home, Enum.Material.Wood)
-	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.5 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25 * BS, 0), home, Enum.Material.SmoothPlastic, false)
+	part("BaseTrim", Vector3.new(W + 0.4 * HS, 0.5 * HS, D + 0.4 * HS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25 * HS, 0), home, Enum.Material.SmoothPlastic, false)
+	-- Trim band between the two storeys.
+	part("MidTrim", Vector3.new(W + 0.4 * HS, 0.4 * HS, D + 0.4 * HS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 5.6 * HS, 0), home, Enum.Material.SmoothPlastic, false)
 	local faceX = pos.X + facing * (W / 2)
-	part("Door", Vector3.new(0.3 * BS, 3.6 * BS, 2 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16 * BS, baseY + 1.8 * BS, pos.Z), home, Enum.Material.Wood)
-	xWindow(home, faceX, baseY + 3.6 * BS, pos.Z - 2.6 * BS, facing)
-	xWindow(home, faceX, baseY + 3.6 * BS, pos.Z + 2.6 * BS, facing)
-	local ridgeY = baseY + H + 3 * BS
-	pitchedRoof(home, Vector3.new(pos.X, ridgeY, pos.Z), W / 2 + 1 * BS, 3 * BS, D + 1 * BS, roofColor, "Z")
-	local cx = pos.X + 3 * BS
-	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(cx, ridgeY - 1 * BS, pos.Z - 2 * BS), home, Enum.Material.SmoothPlastic)
-	part("ChimneyCap", Vector3.new(1.8 * BS, 0.5 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(cx, ridgeY + 0.7 * BS, pos.Z - 2 * BS), home, Enum.Material.SmoothPlastic, false)
-	local porchX = faceX + facing * 1.6 * BS
-	part("PorchFloor", Vector3.new(3 * BS, 0.3 * BS, 4.5 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(porchX, baseY + 0.15 * BS, pos.Z), home, Enum.Material.Wood)
-	for _, pz in ipairs({ -1.8 * BS, 1.8 * BS }) do
-		part("PorchPost", Vector3.new(0.5 * BS, 4.4 * BS, 0.5 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(porchX + facing * 1.2 * BS, baseY + 2.2 * BS, pos.Z + pz), home, Enum.Material.Wood)
+	part("Door", Vector3.new(0.3 * HS, 3.6 * HS, 2 * HS), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16 * HS, baseY + 1.8 * HS, pos.Z), home, Enum.Material.Wood)
+	-- Two rows of windows on the front: ground floor and second floor.
+	for _, wy in ipairs({ 3.6 * HS, 7.4 * HS }) do
+		xWindow(home, faceX, baseY + wy, pos.Z - 2.6 * HS, facing, HS)
+		xWindow(home, faceX, baseY + wy, pos.Z + 2.6 * HS, facing, HS)
 	end
-	local awn = part("PorchAwning", Vector3.new(3.2 * BS, 0.25 * BS, 4.6 * BS), roofColor, Vector3.new(porchX + facing * 0.4 * BS, baseY + 4.4 * BS, pos.Z), home, Enum.Material.Fabric, false)
+	local ridgeY = baseY + H + 4 * HS
+	pitchedRoof(home, Vector3.new(pos.X, ridgeY, pos.Z), W / 2 + 1 * HS, 4 * HS, D + 1 * HS, roofColor, "Z", HS)
+	local cx = pos.X + 3 * HS
+	part("Chimney", Vector3.new(1.2 * HS, 3 * HS, 1.2 * HS), Color3.fromRGB(150, 60, 60), Vector3.new(cx, ridgeY - 1 * HS, pos.Z - 2 * HS), home, Enum.Material.SmoothPlastic)
+	part("ChimneyCap", Vector3.new(1.8 * HS, 0.5 * HS, 1.8 * HS), Color3.fromRGB(90, 60, 35), Vector3.new(cx, ridgeY + 0.7 * HS, pos.Z - 2 * HS), home, Enum.Material.SmoothPlastic, false)
+	-- Shallower porch: floor only 2*HS deep in X, so its outer edge stops
+	-- a stud short of the fences at X ±9.
+	local porchX = faceX + facing * 0.8 * HS
+	part("PorchFloor", Vector3.new(2 * HS, 0.3 * HS, 4.5 * HS), Color3.fromRGB(150, 100, 55), Vector3.new(porchX, baseY + 0.15 * HS, pos.Z), home, Enum.Material.Wood)
+	for _, pz in ipairs({ -1.8 * HS, 1.8 * HS }) do
+		part("PorchPost", Vector3.new(0.5 * HS, 4.4 * HS, 0.5 * HS), Color3.fromRGB(90, 60, 35), Vector3.new(porchX + facing * 1.0 * HS, baseY + 2.2 * HS, pos.Z + pz), home, Enum.Material.Wood)
+	end
+	local awn = part("PorchAwning", Vector3.new(2.2 * HS, 0.25 * HS, 4.6 * HS), roofColor, Vector3.new(porchX + facing * 0.3 * HS, baseY + 4.4 * HS, pos.Z), home, Enum.Material.Fabric, false)
 	awn.CFrame = CFrame.new(awn.Position) * CFrame.Angles(0, 0, facing * math.rad(-12))
 end
 
@@ -333,6 +359,247 @@ local function roundTree(parent, spot, index)
 		ball.Position = spot + leaf[1] + Vector3.new(0, baseY, 0)
 		ball.Parent = t
 	end
+end
+
+-- A tall tree (v3.4): ~12-stud trunk + three leaf balls, ~19 studs tall
+-- in total. Returns a sway entry: the trunk and leaves are animated by
+-- the single animation loop in build(), leaning/swaying a few degrees
+-- around the trunk base/top. `phase` staggers the sway per tree.
+local function tallTree(parent, spot, index)
+	local t = Instance.new("Folder")
+	t.Name = "TallTree" .. index
+	t.Parent = parent
+	local baseY = BEACH_TOP_Y
+	local base = spot + Vector3.new(0, baseY, 0)
+	local trunkLen = 12
+	local trunk = Instance.new("Part")
+	trunk.Name = "TallTrunk"
+	trunk.Shape = Enum.PartType.Cylinder
+	trunk.Size = Vector3.new(trunkLen, 2, 2)
+	trunk.Color = Color3.fromRGB(140, 95, 50)
+	trunk.Anchored = true
+	trunk.CanCollide = true
+	trunk.CFrame = CFrame.new(base + Vector3.new(0, trunkLen / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	trunk.Parent = t
+	local leaves = {}
+	for _, leaf in ipairs({
+		{ Vector3.new(0, 2.5, 0), 9 },
+		{ Vector3.new(-2.8, 0, 0), 6.5 },
+		{ Vector3.new(2.8, 0, 0), 6.5 },
+	}) do
+		local ball = Instance.new("Part")
+		ball.Name = "TallLeaves"
+		ball.Shape = Enum.PartType.Ball
+		ball.Size = Vector3.new(leaf[2], leaf[2], leaf[2])
+		ball.Color = Color3.fromRGB(50, 185, 80)
+		ball.Anchored = true
+		ball.CanCollide = false
+		ball.Position = base + Vector3.new(0, trunkLen, 0) + leaf[1]
+		ball.Parent = t
+		table.insert(leaves, { part = ball, offset = leaf[1] })
+	end
+	return {
+		base = base,
+		trunk = trunk,
+		trunkLen = trunkLen,
+		leaves = leaves,
+		phase = index * 1.3,
+	}
+end
+
+-- Ambient animals (v3.4): built from plain Parts, BrainrotFactory-style.
+-- They are PURELY decorative: no ProximityPrompt, no gameplay effect, and
+-- they stay on open beach away from the conveyor and the bases. Each
+-- builder returns a Model whose PrimaryPart is the body; the single
+-- animation loop in build() moves them with PivotTo. All parts Anchored.
+local function animalPart(name, size, color, position, parent, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Anchored = true
+	p.CanCollide = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Position = position
+	p.Parent = parent
+	return p
+end
+
+local function animalCylinder(name, diameter, length, color, position, parent)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Shape = Enum.PartType.Cylinder
+	p.Size = Vector3.new(length, diameter, diameter)
+	p.Color = color
+	p.Anchored = true
+	p.CanCollide = false
+	p.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+	p.Parent = parent
+	return p
+end
+
+-- A cow: white body with black spots, pink snout and udder, horns, tail.
+-- Body centre (PrimaryPart) at model Y 2.5, feet at model Y 0.
+local function buildCow()
+	local model = Instance.new("Model")
+	model.Name = "Cow"
+	local white = Color3.fromRGB(245, 245, 245)
+	local body = animalPart("Body", Vector3.new(2.4, 2.2, 4), white, Vector3.new(0, 2.5, 0), model)
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(2, 1.8, 1.8), white, Vector3.new(0, 3.4, 2.4), model)
+	animalPart("Snout", Vector3.new(1.4, 0.8, 0.5), Color3.fromRGB(255, 180, 200), Vector3.new(0, 3.1, 3.4), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.4, 0.4, 0.12), white, Vector3.new(sx * 0.5, 3.7, 3.32), model)
+		animalPart("Pupil", Vector3.new(0.2, 0.2, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.5, 3.7, 3.36), model)
+		local horn = animalPart("Horn", Vector3.new(0.3, 0.8, 0.3), Color3.fromRGB(240, 220, 180), Vector3.new(sx * 0.7, 4.5, 2.4), model)
+		horn.CFrame = CFrame.new(horn.Position) * CFrame.Angles(0, 0, sx * -0.3)
+		animalPart("Ear", Vector3.new(0.9, 0.5, 0.15), white, Vector3.new(sx * 1.3, 3.9, 2.4), model)
+		animalCylinder("Leg", 0.5, 1.4, white, Vector3.new(sx * 0.8, 0.7, 1.4), model)
+		animalCylinder("Leg", 0.5, 1.4, white, Vector3.new(sx * 0.8, 0.7, -1.4), model)
+		animalPart("Hoof", Vector3.new(0.55, 0.3, 0.55), Color3.fromRGB(60, 60, 60), Vector3.new(sx * 0.8, 0.15, 1.4), model)
+		animalPart("Hoof", Vector3.new(0.55, 0.3, 0.55), Color3.fromRGB(60, 60, 60), Vector3.new(sx * 0.8, 0.15, -1.4), model)
+		animalPart("Spot", Vector3.new(0.12, 1.0, 1.4), Color3.fromRGB(30, 30, 30), Vector3.new(sx * 1.22, 2.8, 0.5), model)
+	end
+	animalPart("SpotTop", Vector3.new(1.2, 0.12, 1.4), Color3.fromRGB(30, 30, 30), Vector3.new(0, 3.62, -0.8), model)
+	animalPart("Udder", Vector3.new(1.2, 0.7, 1.4), Color3.fromRGB(255, 180, 200), Vector3.new(0, 1.2, -0.5), model)
+	animalPart("Tail", Vector3.new(0.3, 1.6, 0.3), Color3.fromRGB(90, 60, 35), Vector3.new(0, 2.2, -2.1), model)
+	local tuft = Instance.new("Part")
+	tuft.Name = "TailTuft"
+	tuft.Shape = Enum.PartType.Ball
+	tuft.Size = Vector3.new(0.6, 0.6, 0.6)
+	tuft.Color = Color3.fromRGB(60, 40, 25)
+	tuft.Anchored = true
+	tuft.CanCollide = false
+	tuft.Position = Vector3.new(0, 1.3, -2.1)
+	tuft.Parent = model
+	return model, 2.5
+end
+
+-- A pig: pink ball body and head, snout, ears, little legs, curly tail.
+-- Body centre (PrimaryPart) at model Y 2.0, feet at model Y 0.
+local function buildPig()
+	local model = Instance.new("Model")
+	model.Name = "Pig"
+	local pink = Color3.fromRGB(255, 170, 200)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(3.2, 3.2, 3.2)
+	body.Color = pink
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 2.0, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Shape = Enum.PartType.Ball
+	head.Size = Vector3.new(1.8, 1.8, 1.8)
+	head.Color = pink
+	head.Anchored = true
+	head.CanCollide = false
+	head.Position = Vector3.new(0, 2.7, 1.9)
+	head.Parent = model
+	local snout = Instance.new("Part")
+	snout.Name = "Snout"
+	snout.Shape = Enum.PartType.Cylinder
+	snout.Size = Vector3.new(0.5, 0.9, 0.9)
+	snout.Color = Color3.fromRGB(240, 130, 170)
+	snout.Anchored = true
+	snout.CanCollide = false
+	snout.CFrame = CFrame.new(Vector3.new(0, 2.6, 2.9)) * CFrame.Angles(0, math.rad(90), 0)
+	snout.Parent = model
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.25, 0.25, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.45, 2.9, 2.8), model)
+		local ear = animalPart("Ear", Vector3.new(0.5, 0.7, 0.15), pink, Vector3.new(sx * 0.6, 3.6, 1.9), model)
+		ear.CFrame = CFrame.new(ear.Position) * CFrame.Angles(0, 0, sx * -0.25)
+		animalCylinder("Leg", 0.5, 1.0, Color3.fromRGB(240, 130, 170), Vector3.new(sx * 0.7, 0.5, 0.9), model)
+		animalCylinder("Leg", 0.5, 1.0, Color3.fromRGB(240, 130, 170), Vector3.new(sx * 0.7, 0.5, -0.9), model)
+	end
+	local tail = animalPart("Tail", Vector3.new(0.2, 0.6, 0.2), Color3.fromRGB(240, 130, 170), Vector3.new(0, 2.3, -1.7), model)
+	tail.CFrame = CFrame.new(tail.Position) * CFrame.Angles(math.rad(30), 0, 0)
+	return model, 2.0
+end
+
+-- A chicken: white ball body and head, red comb, orange beak and legs.
+-- Body centre (PrimaryPart) at model Y 1.6, feet at model Y 0.
+local function buildChicken()
+	local model = Instance.new("Model")
+	model.Name = "Chicken"
+	local white = Color3.fromRGB(245, 245, 245)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(2.2, 2.2, 2.2)
+	body.Color = white
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 1.6, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Shape = Enum.PartType.Ball
+	head.Size = Vector3.new(1.2, 1.2, 1.2)
+	head.Color = white
+	head.Anchored = true
+	head.CanCollide = false
+	head.Position = Vector3.new(0, 3.1, 0.5)
+	head.Parent = model
+	for _, ox in ipairs({ -0.3, 0, 0.3 }) do
+		animalPart("Comb", Vector3.new(0.3, 0.5, 0.3), Color3.fromRGB(220, 40, 40), Vector3.new(ox, 3.8, 0.5), model)
+	end
+	animalPart("Beak", Vector3.new(0.5, 0.35, 0.6), Color3.fromRGB(255, 170, 40), Vector3.new(0, 3.0, 1.25), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.2, 0.2, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.3, 3.2, 1.08), model)
+		animalPart("Wing", Vector3.new(0.2, 1.2, 1.4), white, Vector3.new(sx * 1.15, 1.7, 0), model)
+		animalCylinder("Leg", 0.2, 1.0, Color3.fromRGB(255, 170, 40), Vector3.new(sx * 0.4, 0.5, 0), model)
+		local tail = animalPart("Tail", Vector3.new(0.15, 1.2, 0.7), white, Vector3.new(sx * 0.3, 2.6, -1.1), model)
+		tail.CFrame = CFrame.new(tail.Position) * CFrame.Angles(math.rad(-30), 0, 0)
+	end
+	return model, 1.6
+end
+
+-- A bird: small ball body, wings that flap, beak and tail. The model
+-- origin is the body centre; the orbit loop PivotTos it overhead.
+-- Returns the model plus the wing flap data (attach point, centre, side).
+local function buildBird(color)
+	local model = Instance.new("Model")
+	model.Name = "Bird"
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(1.2, 1.2, 1.2)
+	body.Color = color
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 0, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Shape = Enum.PartType.Ball
+	head.Size = Vector3.new(0.8, 0.8, 0.8)
+	head.Color = color
+	head.Anchored = true
+	head.CanCollide = false
+	head.Position = Vector3.new(0, 0.4, 0.5)
+	head.Parent = model
+	animalPart("Beak", Vector3.new(0.3, 0.25, 0.5), Color3.fromRGB(255, 170, 40), Vector3.new(0, 0.35, 1.0), model)
+	animalPart("Tail", Vector3.new(0.8, 0.12, 1.2), color, Vector3.new(0, -0.1, -0.9), model)
+	local wings = {}
+	for _, sx in ipairs({ -1, 1 }) do
+		local wing = animalPart("Wing", Vector3.new(2.4, 0.15, 1.0), color, Vector3.new(sx * 1.7, 0.1, 0), model)
+		table.insert(wings, {
+			part = wing,
+			attach = Vector3.new(sx * 0.55, 0.1, 0),
+			centre = Vector3.new(sx * 1.7, 0.1, 0),
+			side = sx,
+		})
+	end
+	return model, wings
 end
 
 function WorldBuilder.build()
@@ -538,12 +805,13 @@ function WorldBuilder.build()
 	-- Town centre by the spawn plaza: a barn and a shop facing the plaza.
 	barn(buildings, Vector3.new(-45, 0, -178), Color3.fromRGB(200, 60, 60), Color3.fromRGB(90, 60, 35), 1)
 	shop(buildings, Vector3.new(45, 0, -178), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1)
-	-- Houses flanking the conveyor, fronts facing the conveyor. At BS 1.8
-	-- they sit at X ±25 so the bigger porches clear the fences at X ±9.
-	house(buildings, Vector3.new(-25, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
-	house(buildings, Vector3.new(25, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
-	house(buildings, Vector3.new(-25, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
-	house(buildings, Vector3.new(25, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
+	-- Houses flanking the conveyor, fronts facing the conveyor. At HS 2.5
+	-- they sit at X ±27 so the shallower porches stop a stud short of the
+	-- fences at X ±9; their Z span stays inside the gap between base rows.
+	house(buildings, Vector3.new(-27, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
+	house(buildings, Vector3.new(27, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
+	house(buildings, Vector3.new(-27, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
+	house(buildings, Vector3.new(27, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
 	-- Smaller huts further down the conveyor.
 	hut(buildings, Vector3.new(-20, 0, -90), Color3.fromRGB(255, 160, 80), Color3.fromRGB(90, 160, 255), 1, 1)
 	hut(buildings, Vector3.new(20, 0, 90), Color3.fromRGB(140, 220, 255), Color3.fromRGB(200, 60, 60), -1, 2)
@@ -648,6 +916,112 @@ function WorldBuilder.build()
 		end
 		signBoard(props, sp + Vector3.new(0, BEACH_TOP_Y + 7, 0), s[2], Color3.fromRGB(255, 220, 80), Vector3.new(16, 4, 0.6))
 	end
+
+	-- v3.4: tall swaying trees at the map edges, clear of the conveyor,
+	-- bases, buildings and spawn pads (the water bands hug Z ±173..243 and
+	-- Z -233..-163, so the trees stay inside Z ±150).
+	local tallTrees = {}
+	local tallTreeSpots = {
+		Vector3.new(-110, 0, -150), Vector3.new(110, 0, -150),
+		Vector3.new(-110, 0, 150), Vector3.new(110, 0, 150),
+		Vector3.new(-150, 0, 0), Vector3.new(150, 0, 0),
+	}
+	local treesFolder = Instance.new("Folder")
+	treesFolder.Name = "TallTrees"
+	treesFolder.Parent = world
+	for i, spot in ipairs(tallTreeSpots) do
+		table.insert(tallTrees, tallTree(treesFolder, spot, i))
+	end
+
+	-- v3.4: ambient animals, purely decorative — no prompt, no gameplay.
+	-- Ground animals wander a small patch of open beach; two birds orbit
+	-- high above the map. All clear of the conveyor and the bases.
+	local animalsFolder = Instance.new("Folder")
+	animalsFolder.Name = "Animals"
+	animalsFolder.Parent = world
+	local wanderers = {}
+	for _, spec in ipairs({
+		{ buildCow, Vector3.new(45, 0, 145), 6, 0.12, 0 },
+		{ buildPig, Vector3.new(-45, 0, 145), 6, 0.12, 2.1 },
+		{ buildChicken, Vector3.new(55, 0, -145), 6, 0.16, 4.2 },
+	}) do
+		local model, pivotY = spec[1]()
+		model.Parent = animalsFolder
+		table.insert(wanderers, {
+			model = model,
+			home = spec[2],
+			radius = spec[3],
+			speed = spec[4],
+			phase = spec[5],
+			pivotY = pivotY,
+		})
+	end
+	local orbiters = {}
+	for _, spec in ipairs({
+		{ Color3.fromRGB(90, 160, 255), 0 },
+		{ Color3.fromRGB(245, 245, 245), math.pi },
+	}) do
+		local model, wings = buildBird(spec[1])
+		model.Parent = animalsFolder
+		table.insert(orbiters, {
+			model = model,
+			wings = wings,
+			centre = Vector3.new(0, 45, 5),
+			radius = 70,
+			speed = 0.15,
+			phase = spec[2],
+		})
+	end
+
+	-- ONE animation loop for the whole bay (v3.4): tall trees lean and
+	-- sway, ground animals wander in small circles with a gentle bob, and
+	-- the birds orbit overhead banking and flapping. A single task.spawn
+	-- loop at 10 Hz, ~30 CFrame writes per tick — cheap, no per-part
+	-- connections. Same pattern as the water/chevron loops above.
+	task.spawn(function()
+		local t = 0
+		while world.Parent do
+			t += 0.1
+			for _, tree in ipairs(tallTrees) do
+				local lean = math.rad(1.5) * math.sin(t * 1.1 + tree.phase)
+				local sway = math.rad(3) * math.sin(t * 1.1 + tree.phase + 0.6)
+				tree.trunk.CFrame = CFrame.new(tree.base) * CFrame.Angles(0, 0, lean)
+					* CFrame.new(0, tree.trunkLen / 2, 0) * CFrame.Angles(0, 0, math.rad(90))
+				local top = tree.base + Vector3.new(
+					-tree.trunkLen * math.sin(lean),
+					tree.trunkLen * math.cos(lean),
+					0
+				)
+				for _, leaf in ipairs(tree.leaves) do
+					leaf.part.CFrame = CFrame.new(top) * CFrame.Angles(0, 0, sway) * CFrame.new(leaf.offset)
+				end
+			end
+			for _, w in ipairs(wanderers) do
+				local a = t * w.speed + w.phase
+				local x = w.home.X + math.cos(a) * w.radius
+				local z = w.home.Z + math.sin(a) * w.radius
+				local heading = math.atan2(-math.sin(a), math.cos(a))
+				local bob = math.abs(math.sin(t * 2 + w.phase)) * 0.25
+				w.model:PivotTo(CFrame.new(x, BEACH_TOP_Y + w.pivotY + bob, z) * CFrame.Angles(0, heading, 0))
+			end
+			for _, b in ipairs(orbiters) do
+				local a = t * b.speed + b.phase
+				local x = b.centre.X + math.cos(a) * b.radius
+				local z = b.centre.Z + math.sin(a) * b.radius
+				local y = b.centre.Y + math.sin(t * 0.7 + b.phase) * 1.5
+				local heading = math.atan2(-math.sin(a), math.cos(a))
+				local roll = math.rad(20) * math.sin(t * 2 + b.phase)
+				local pivot = CFrame.new(x, y, z) * CFrame.Angles(0, heading, 0) * CFrame.Angles(roll, 0, 0)
+				b.model:PivotTo(pivot)
+				local flap = math.rad(25) * math.sin(t * 6 + b.phase)
+				for _, wing in ipairs(b.wings) do
+					wing.part.CFrame = pivot * CFrame.new(wing.attach)
+						* CFrame.Angles(0, 0, wing.side * flap) * CFrame.new(wing.centre - wing.attach)
+				end
+			end
+			task.wait(0.1)
+		end
+	end)
 
 	return bases
 end

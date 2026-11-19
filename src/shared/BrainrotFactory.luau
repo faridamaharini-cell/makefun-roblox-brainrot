@@ -210,10 +210,34 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 		pupil.Position = Vector3.new(offsetX, 4.7, 1.19)
 	end
 
-	-- Arms and legs under the torso, as cylinders like the body.
+	-- Smile: a small dark mouth below the eyes, sitting on the ball's
+	-- surface (at Y -0.55 the ball's cross-section radius is ~1.07, so
+	-- the 0.12-thick mouth pokes out to Z 1.14). The face reads human now.
+	local mouth = makeBox("Mouth", Vector3.new(0.9, 0.25, 0.12), Color3.fromRGB(20, 20, 20), model)
+	mouth.Position = Vector3.new(0, 4.05, 1.08)
+
+	-- Hair: a flattened ball cap on the top/back of the head, leaving the
+	-- face open. Only when the accessory does not already cover the top
+	-- of the head (hat, crown, antenna and halo sit up there instead).
+	local TOP_ACCESSORIES = { hat = true, crown = true, antenna = true, halo = true }
+	if not TOP_ACCESSORIES[def.accessory] then
+		local hair = Instance.new("Part")
+		hair.Name = "Hair"
+		hair.Shape = Enum.PartType.Ball
+		hair.Size = Vector3.new(2.6, 1.5, 2.6)
+		hair.Color = Color3.fromRGB(45, 30, 20)
+		hair.Anchored = true
+		hair.CanCollide = false
+		hair.Position = head.Position + Vector3.new(0, 0.7, -0.3)
+		hair.Parent = model
+	end
+
+	-- Arms and legs under the torso, as cylinders like the body. The legs
+	-- are longer (2.0, centred at Y 1.0) for human proportions, emerging
+	-- from under the torso; feet stay at model y 0, Body centre at 2.5.
 	for _, side in ipairs({ -1, 1 }) do
 		makeCylinder("Arm", 0.7, 2.0, bodyColor, Vector3.new(side * 1.75, 2.5, 0), model)
-		makeCylinder("Leg", 0.9, 1.2, Color3.fromRGB(60, 60, 70), Vector3.new(side * 0.65, 0.6, 0), model)
+		makeCylinder("Leg", 0.9, 2.0, Color3.fromRGB(60, 60, 70), Vector3.new(side * 0.65, 1.0, 0), model)
 	end
 
 	local buildAccessory = AccessoryBuilders[def.accessory]

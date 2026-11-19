@@ -12,6 +12,10 @@
 -- birds) wander and orbit — one cheap animation loop drives them all.
 -- v3.5: the town is denser (two more houses, two more shops, two more
 -- huts, two more stalls) and the animals are 2x bigger.
+-- v3.6: as busy as possible — a second market row on each outer band, a
+-- lighthouse with rotating beams, a pier with bobbing sailboats, benches,
+-- flower beds, extra lamps, waving flags, more signs, five more big
+-- animals (dog, horse, duck, sheep, goat) and butterflies.
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
@@ -604,6 +608,200 @@ local function buildBird(color)
 	return model, wings
 end
 
+-- A dog: brown box body and head, floppy ears, snout, tail, four legs.
+-- Body centre (PrimaryPart) at model Y 1.8, feet at model Y 0.
+local function buildDog()
+	local model = Instance.new("Model")
+	model.Name = "Dog"
+	local brown = Color3.fromRGB(150, 100, 55)
+	local body = animalPart("Body", Vector3.new(2.2, 1.6, 3.2), brown, Vector3.new(0, 1.8, 0), model)
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(1.6, 1.6, 1.6), brown, Vector3.new(0, 2.6, 1.9), model)
+	animalPart("Snout", Vector3.new(1.0, 0.6, 0.7), Color3.fromRGB(200, 150, 100), Vector3.new(0, 2.4, 2.85), model)
+	animalPart("Nose", Vector3.new(0.5, 0.4, 0.2), Color3.fromRGB(30, 30, 30), Vector3.new(0, 2.5, 3.2), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.3, 0.3, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.45, 2.8, 2.72), model)
+		local ear = animalPart("Ear", Vector3.new(0.4, 1.0, 0.7), Color3.fromRGB(110, 70, 35), Vector3.new(sx * 0.85, 2.7, 1.9), model)
+		ear.CFrame = CFrame.new(ear.Position) * CFrame.Angles(0, 0, sx * 0.2)
+		animalCylinder("Leg", 0.45, 1.2, brown, Vector3.new(sx * 0.7, 0.6, 1.1), model)
+		animalCylinder("Leg", 0.45, 1.2, brown, Vector3.new(sx * 0.7, 0.6, -1.1), model)
+	end
+	animalPart("Chest", Vector3.new(1.4, 1.0, 0.2), Color3.fromRGB(245, 235, 220), Vector3.new(0, 1.6, 1.62), model)
+	local tail = animalPart("Tail", Vector3.new(0.3, 1.4, 0.3), brown, Vector3.new(0, 2.4, -1.8), model)
+	tail.CFrame = CFrame.new(tail.Position) * CFrame.Angles(math.rad(-35), 0, 0)
+	return model, 1.8
+end
+
+-- A horse: tall box body, long neck and head, mane, tail, four long legs.
+-- Body centre (PrimaryPart) at model Y 2.6, feet at model Y 0.
+local function buildHorse()
+	local model = Instance.new("Model")
+	model.Name = "Horse"
+	local brown = Color3.fromRGB(120, 80, 40)
+	local dark = Color3.fromRGB(60, 40, 25)
+	local body = animalPart("Body", Vector3.new(2.6, 2.4, 4.6), brown, Vector3.new(0, 2.6, 0), model)
+	model.PrimaryPart = body
+	local neck = animalPart("Neck", Vector3.new(1.6, 2.4, 1.6), brown, Vector3.new(0, 3.9, 2.2), model)
+	neck.CFrame = CFrame.new(neck.Position) * CFrame.Angles(math.rad(-25), 0, 0)
+	animalPart("Head", Vector3.new(1.6, 1.8, 2.4), brown, Vector3.new(0, 5.0, 2.9), model)
+	animalPart("Snout", Vector3.new(1.2, 1.0, 0.8), Color3.fromRGB(200, 150, 100), Vector3.new(0, 4.7, 4.1), model)
+	local mane = animalPart("Mane", Vector3.new(0.5, 3.0, 1.2), dark, Vector3.new(0, 4.3, 1.3), model)
+	mane.CFrame = CFrame.new(mane.Position) * CFrame.Angles(math.rad(-25), 0, 0)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.3, 0.3, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.55, 5.2, 4.05), model)
+		animalPart("Ear", Vector3.new(0.4, 0.8, 0.4), brown, Vector3.new(sx * 0.5, 6.1, 2.7), model)
+		animalCylinder("Leg", 0.55, 2.2, brown, Vector3.new(sx * 0.85, 1.1, 1.6), model)
+		animalCylinder("Leg", 0.55, 2.2, brown, Vector3.new(sx * 0.85, 1.1, -1.6), model)
+		animalPart("Hoof", Vector3.new(0.6, 0.3, 0.6), dark, Vector3.new(sx * 0.85, 0.15, 1.6), model)
+		animalPart("Hoof", Vector3.new(0.6, 0.3, 0.6), dark, Vector3.new(sx * 0.85, 0.15, -1.6), model)
+	end
+	local tail = animalPart("Tail", Vector3.new(0.5, 2.4, 0.5), dark, Vector3.new(0, 2.4, -2.5), model)
+	tail.CFrame = CFrame.new(tail.Position) * CFrame.Angles(math.rad(15), 0, 0)
+	return model, 2.6
+end
+
+-- A duck: yellow ball body and head, orange beak and legs.
+-- Body centre (PrimaryPart) at model Y 1.4, feet at model Y 0.
+local function buildDuck()
+	local model = Instance.new("Model")
+	model.Name = "Duck"
+	local yellow = Color3.fromRGB(255, 220, 80)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(2.0, 2.0, 2.0)
+	body.Color = yellow
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 1.4, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Shape = Enum.PartType.Ball
+	head.Size = Vector3.new(1.2, 1.2, 1.2)
+	head.Color = yellow
+	head.Anchored = true
+	head.CanCollide = false
+	head.Position = Vector3.new(0, 2.6, 0.6)
+	head.Parent = model
+	animalPart("Beak", Vector3.new(0.7, 0.25, 0.7), Color3.fromRGB(255, 140, 40), Vector3.new(0, 2.5, 1.35), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.2, 0.2, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.35, 2.7, 1.18), model)
+		animalPart("Wing", Vector3.new(0.2, 0.9, 1.2), yellow, Vector3.new(sx * 1.05, 1.5, 0), model)
+		animalCylinder("Leg", 0.2, 0.9, Color3.fromRGB(255, 140, 40), Vector3.new(sx * 0.4, 0.45, 0), model)
+	end
+	return model, 1.4
+end
+
+-- A sheep: fluffy white wool ball body, dark face and legs, wool puffs.
+-- Body centre (PrimaryPart) at model Y 1.8, feet at model Y 0.
+local function buildSheep()
+	local model = Instance.new("Model")
+	model.Name = "Sheep"
+	local wool = Color3.fromRGB(245, 245, 245)
+	local dark = Color3.fromRGB(60, 60, 60)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(3.0, 2.6, 3.0)
+	body.Color = wool
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 1.8, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(1.4, 1.2, 1.2), dark, Vector3.new(0, 2.4, 1.7), model)
+	animalPart("Snout", Vector3.new(0.9, 0.6, 0.4), dark, Vector3.new(0, 2.2, 2.35), model)
+	for _, ox in ipairs({ -0.9, 0, 0.9 }) do
+		local puff = Instance.new("Part")
+		puff.Name = "WoolPuff"
+		puff.Shape = Enum.PartType.Ball
+		puff.Size = Vector3.new(1.4, 1.4, 1.4)
+		puff.Color = wool
+		puff.Anchored = true
+		puff.CanCollide = false
+		puff.Position = Vector3.new(ox, 3.1, 0)
+		puff.Parent = model
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.25, 0.25, 0.12), Color3.fromRGB(255, 255, 255), Vector3.new(sx * 0.4, 2.6, 2.32), model)
+		animalPart("Ear", Vector3.new(0.6, 0.4, 0.2), dark, Vector3.new(sx * 0.85, 2.5, 1.7), model)
+		animalCylinder("Leg", 0.4, 1.2, dark, Vector3.new(sx * 0.7, 0.6, 0.9), model)
+		animalCylinder("Leg", 0.4, 1.2, dark, Vector3.new(sx * 0.7, 0.6, -0.9), model)
+	end
+	return model, 1.8
+end
+
+-- A goat: white box body, bearded head with horns, four legs.
+-- Body centre (PrimaryPart) at model Y 1.8, feet at model Y 0.
+local function buildGoat()
+	local model = Instance.new("Model")
+	model.Name = "Goat"
+	local white = Color3.fromRGB(230, 230, 230)
+	local body = animalPart("Body", Vector3.new(2.2, 1.8, 3.4), white, Vector3.new(0, 1.8, 0), model)
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(1.5, 1.5, 1.5), white, Vector3.new(0, 2.7, 2.0), model)
+	animalPart("Snout", Vector3.new(1.0, 0.7, 0.5), Color3.fromRGB(200, 200, 200), Vector3.new(0, 2.5, 2.85), model)
+	animalPart("Beard", Vector3.new(0.5, 0.8, 0.3), white, Vector3.new(0, 2.0, 2.8), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.25, 0.25, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.45, 2.9, 2.72), model)
+		local horn = animalPart("Horn", Vector3.new(0.3, 1.0, 0.3), Color3.fromRGB(240, 220, 180), Vector3.new(sx * 0.55, 3.6, 2.0), model)
+		horn.CFrame = CFrame.new(horn.Position) * CFrame.Angles(0, 0, sx * -0.35)
+		animalPart("Ear", Vector3.new(0.7, 0.4, 0.2), white, Vector3.new(sx * 0.9, 2.8, 2.0), model)
+		animalCylinder("Leg", 0.4, 1.2, white, Vector3.new(sx * 0.7, 0.6, 1.1), model)
+		animalCylinder("Leg", 0.4, 1.2, white, Vector3.new(sx * 0.7, 0.6, -1.1), model)
+	end
+	local tail = animalPart("Tail", Vector3.new(0.3, 0.6, 0.3), white, Vector3.new(0, 2.3, -1.8), model)
+	tail.CFrame = CFrame.new(tail.Position) * CFrame.Angles(math.rad(-40), 0, 0)
+	return model, 1.8
+end
+
+-- A butterfly: tiny body with two big colourful wings that flap. The
+-- model origin is the body centre; the orbit loop PivotTos it over a
+-- flower bed. Returns the model plus the wing flap data (attach point,
+-- centre, side), like buildBird.
+local function buildButterfly(color)
+	local model = Instance.new("Model")
+	model.Name = "Butterfly"
+	local body = animalPart("Body", Vector3.new(0.3, 1.0, 0.3), Color3.fromRGB(40, 40, 40), Vector3.new(0, 0, 0), model)
+	model.PrimaryPart = body
+	for _, sx in ipairs({ -1, 1 }) do
+		local antenna = animalPart("Antenna", Vector3.new(0.08, 0.7, 0.08), Color3.fromRGB(40, 40, 40), Vector3.new(sx * 0.15, 0.7, 0.2), model)
+		antenna.CFrame = CFrame.new(antenna.Position) * CFrame.Angles(math.rad(20), 0, sx * -0.2)
+	end
+	local wings = {}
+	for _, sx in ipairs({ -1, 1 }) do
+		local wing = animalPart("Wing", Vector3.new(1.6, 0.1, 1.2), color, Vector3.new(sx * 0.95, 0.1, 0), model, Enum.Material.Fabric)
+		table.insert(wings, {
+			part = wing,
+			attach = Vector3.new(sx * 0.15, 0.1, 0),
+			centre = Vector3.new(sx * 0.95, 0.1, 0),
+			side = sx,
+		})
+	end
+	return model, wings
+end
+
+-- A little sailboat: wooden hull with a bow, benches, a mast, a white
+-- sail and a red flag. The model origin is the hull centre (model Y
+-- 0.75); the loop floats it on the water (water top Y 0.5), so the
+-- pivot Y it returns is 1.25 above the water surface.
+local function buildBoat()
+	local model = Instance.new("Model")
+	model.Name = "Boat"
+	local hull = animalPart("Hull", Vector3.new(3, 1.5, 6), Color3.fromRGB(150, 100, 55), Vector3.new(0, 0.75, 0), model, Enum.Material.Wood)
+	model.PrimaryPart = hull
+	local bow = animalPart("Bow", Vector3.new(3, 1.2, 1.6), Color3.fromRGB(150, 100, 55), Vector3.new(0, 0.7, 3.2), model, Enum.Material.Wood)
+	bow.CFrame = CFrame.new(bow.Position) * CFrame.Angles(math.rad(-30), 0, 0)
+	animalPart("Bench", Vector3.new(2.6, 0.3, 0.8), Color3.fromRGB(120, 80, 40), Vector3.new(0, 1.6, -1), model, Enum.Material.Wood)
+	animalPart("Bench", Vector3.new(2.6, 0.3, 0.8), Color3.fromRGB(120, 80, 40), Vector3.new(0, 1.6, 1), model, Enum.Material.Wood)
+	animalCylinder("Mast", 0.3, 4.5, Color3.fromRGB(90, 60, 35), Vector3.new(0, 3.5, 0), model)
+	animalPart("Sail", Vector3.new(0.2, 3.2, 2.4), Color3.fromRGB(255, 255, 255), Vector3.new(0, 3.6, -0.8), model, Enum.Material.Fabric)
+	animalPart("MastFlag", Vector3.new(0.9, 0.6, 0.1), Color3.fromRGB(255, 90, 90), Vector3.new(0.6, 5.7, 0), model, Enum.Material.Fabric)
+	return model, 1.25
+end
+
 function WorldBuilder.build()
 	local world = Instance.new("Folder")
 	world.Name = "World"
@@ -1010,6 +1208,251 @@ function WorldBuilder.build()
 		})
 	end
 
+	-- v3.6: five more big animals (dog, horse, duck, sheep, goat) — same
+	-- wander pattern as the v3.4 animals, 2x like the v3.5 ones. The
+	-- horse's circle is tighter (r4) so its long body clears the shop at
+	-- (80, -150) and the tall tree at (110, -150); the sheep's circle is
+	-- r4 at (140, 166) so it stays off the pier and out of the water.
+	for _, spec in ipairs({
+		{ buildDog, Vector3.new(-100, 0, -135), 5, 0.16, 0.7 },
+		{ buildHorse, Vector3.new(105, 0, -135), 4, 0.10, 1.9 },
+		{ buildDuck, Vector3.new(-120, 0, 165), 5, 0.18, 3.1 },
+		{ buildSheep, Vector3.new(140, 0, 166), 4, 0.10, 4.4 },
+		{ buildGoat, Vector3.new(-140, 0, -100), 5, 0.14, 5.6 },
+	}) do
+		local model, pivotY = spec[1]()
+		model:ScaleTo(2)
+		pivotY = pivotY * 2
+		model.Parent = animalsFolder
+		table.insert(wanderers, {
+			model = model,
+			home = spec[2],
+			radius = spec[3],
+			speed = spec[4],
+			phase = spec[5],
+			pivotY = pivotY,
+		})
+	end
+
+	-- v3.6: three butterflies over the flower beds below.
+	local butterflies = {}
+	for _, spec in ipairs({
+		{ Color3.fromRGB(255, 140, 40), Vector3.new(-40, 5.5, -140), 6, 0.5, 0 },
+		{ Color3.fromRGB(255, 90, 200), Vector3.new(40, 5.5, 165), 6, 0.5, 2.1 },
+		{ Color3.fromRGB(200, 120, 255), Vector3.new(-40, 5.5, 165), 6, 0.5, 4.2 },
+	}) do
+		local model, wings = buildButterfly(spec[1])
+		model.Parent = animalsFolder
+		table.insert(butterflies, {
+			model = model,
+			wings = wings,
+			centre = spec[2],
+			radius = spec[3],
+			speed = spec[4],
+			phase = spec[5],
+		})
+	end
+
+	-- v3.6: as busy as possible — a second market row on each outer band.
+	-- East side: three stalls, a taco shop and a hut at X 110 (clear of
+	-- the palms at X 75, the tall trees at X 110/Z ±150 and the bases at
+	-- X ≤ 63). West side: two more two-storey houses and two stalls at
+	-- X -110 (houses at Z ±60, stalls at Z ±40 — clear of each other,
+	-- the palms and the tall trees). Two more stalls by the south water
+	-- at (±55, 165), clear of the huts at (±80, 150) and the palms at
+	-- (±30, 175). Goods on every new stall counter.
+	local town2 = Instance.new("Folder")
+	town2.Name = "Town2"
+	town2.Parent = world
+	house(town2, Vector3.new(-110, 0, -60), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1, 7)
+	house(town2, Vector3.new(-110, 0, 60), Color3.fromRGB(90, 220, 210), Color3.fromRGB(200, 60, 60), 1, 8)
+	marketStall(town2, Vector3.new(110, 0, -40), Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 255, 255), 10)
+	marketStall(town2, Vector3.new(110, 0, 0), Color3.fromRGB(120, 220, 120), Color3.fromRGB(255, 255, 255), 11)
+	marketStall(town2, Vector3.new(110, 0, 40), Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 255, 255), 12)
+	shop(town2, Vector3.new(110, 0, -80), Color3.fromRGB(255, 140, 200), Color3.fromRGB(90, 220, 210), 5, "TACO STAND")
+	hut(town2, Vector3.new(110, 0, 80), Color3.fromRGB(140, 220, 255), Color3.fromRGB(255, 200, 60), -1, 6)
+	marketStall(town2, Vector3.new(-110, 0, -40), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 255, 255), 13)
+	marketStall(town2, Vector3.new(-110, 0, 40), Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 255, 255), 14)
+	marketStall(town2, Vector3.new(-55, 0, 165), Color3.fromRGB(255, 140, 200), Color3.fromRGB(255, 255, 255), 15)
+	marketStall(town2, Vector3.new(55, 0, 165), Color3.fromRGB(90, 220, 210), Color3.fromRGB(255, 255, 255), 16)
+	for _, g in ipairs({
+		{ Vector3.new(110, 0, -40), Color3.fromRGB(255, 90, 90) },
+		{ Vector3.new(110, 0, 0), Color3.fromRGB(120, 220, 120) },
+		{ Vector3.new(110, 0, 40), Color3.fromRGB(200, 120, 255) },
+		{ Vector3.new(-110, 0, -40), Color3.fromRGB(90, 160, 255) },
+		{ Vector3.new(-110, 0, 40), Color3.fromRGB(255, 200, 60) },
+		{ Vector3.new(-55, 0, 165), Color3.fromRGB(255, 140, 200) },
+		{ Vector3.new(55, 0, 165), Color3.fromRGB(90, 220, 210) },
+	}) do
+		part("Goods", Vector3.new(1.5, 1.5, 1.5), g[2], g[1] + Vector3.new(0, 3.1, 0), town2, Enum.Material.SmoothPlastic, false)
+	end
+
+	-- v3.6 landmark: a lighthouse on the north-east shore at (200, -155)
+	-- — on the beach just south of the north water band (Z -163..), clear
+	-- of the house at (85, -170). White tower with red stripes, a glass
+	-- lamp room with a glowing bulb, a red dome, and two rotating beams.
+	local lhBase = Vector3.new(200, BEACH_TOP_Y, -155)
+	part("LighthouseBase", Vector3.new(12, 2, 12), Color3.fromRGB(120, 120, 130), lhBase + Vector3.new(0, 1, 0), world)
+	local tower = Instance.new("Part")
+	tower.Name = "LighthouseTower"
+	tower.Shape = Enum.PartType.Cylinder
+	tower.Size = Vector3.new(30, 8, 8)
+	tower.Color = Color3.fromRGB(255, 255, 255)
+	tower.Anchored = true
+	tower.CanCollide = true
+	tower.CFrame = CFrame.new(lhBase + Vector3.new(0, 17, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	tower.Parent = world
+	for _, sy in ipairs({ 10, 22 }) do
+		local stripe = Instance.new("Part")
+		stripe.Name = "LighthouseStripe"
+		stripe.Shape = Enum.PartType.Cylinder
+		stripe.Size = Vector3.new(3, 8.4, 8.4)
+		stripe.Color = Color3.fromRGB(220, 60, 60)
+		stripe.Anchored = true
+		stripe.CanCollide = false
+		stripe.CFrame = CFrame.new(lhBase + Vector3.new(0, sy, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		stripe.Parent = world
+	end
+	part("LighthouseGallery", Vector3.new(10, 1, 10), Color3.fromRGB(60, 60, 70), lhBase + Vector3.new(0, 32.5, 0), world)
+	local lampRoom = Instance.new("Part")
+	lampRoom.Name = "LampRoom"
+	lampRoom.Shape = Enum.PartType.Cylinder
+	lampRoom.Size = Vector3.new(5, 6, 6)
+	lampRoom.Material = Enum.Material.Glass
+	lampRoom.Color = Color3.fromRGB(180, 220, 255)
+	lampRoom.Anchored = true
+	lampRoom.CanCollide = false
+	lampRoom.CFrame = CFrame.new(lhBase + Vector3.new(0, 35.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	lampRoom.Parent = world
+	local lampBulb = Instance.new("Part")
+	lampBulb.Name = "LampBulb"
+	lampBulb.Shape = Enum.PartType.Ball
+	lampBulb.Size = Vector3.new(3.5, 3.5, 3.5)
+	lampBulb.Material = Enum.Material.Neon
+	lampBulb.Color = Color3.fromRGB(255, 240, 160)
+	lampBulb.Anchored = true
+	lampBulb.CanCollide = false
+	lampBulb.Position = lhBase + Vector3.new(0, 35.5, 0)
+	lampBulb.Parent = world
+	local dome = Instance.new("Part")
+	dome.Name = "LighthouseDome"
+	dome.Shape = Enum.PartType.Ball
+	dome.Size = Vector3.new(7, 4, 7)
+	dome.Color = Color3.fromRGB(220, 60, 60)
+	dome.Anchored = true
+	dome.CanCollide = false
+	dome.Position = lhBase + Vector3.new(0, 39.5, 0)
+	dome.Parent = world
+	-- Two rotating light beams, spun by the animation loop below.
+	local beamPivot = lhBase + Vector3.new(0, 35.5, 0)
+	local beams = {}
+	for _, dir in ipairs({ 1, -1 }) do
+		local beam = part("LightBeam", Vector3.new(26, 1, 1), Color3.fromRGB(255, 240, 160), beamPivot + Vector3.new(dir * 13, 0, 0), world, Enum.Material.Neon, false)
+		beam.Transparency = 0.45
+		table.insert(beams, { part = beam, pivot = beamPivot, dir = dir })
+	end
+
+	-- v3.6: a wooden pier reaching into the south water at X 120, from
+	-- the beach (Z 168) out to Z 215 — clear of the hut at (80, 150),
+	-- the tall tree at (110, 150) and the sheep's patch at (140, 166).
+	-- Planks, posts and side rails, plus two sailboats bobbing nearby.
+	local pier = Instance.new("Folder")
+	pier.Name = "Pier"
+	pier.Parent = world
+	for z = 169, 214, 3 do
+		part("PierPlank", Vector3.new(6, 0.4, 2.6), Color3.fromRGB(150, 100, 55), Vector3.new(120, 1.0, z), pier, Enum.Material.Wood)
+	end
+	for _, px in ipairs({ 117.5, 122.5 }) do
+		for z = 170, 214, 8 do
+			part("PierPost", Vector3.new(0.6, 3, 0.6), Color3.fromRGB(90, 60, 35), Vector3.new(px, 0, z), pier, Enum.Material.Wood)
+		end
+		part("PierRail", Vector3.new(0.3, 0.3, 46), Color3.fromRGB(150, 100, 55), Vector3.new(px, 2.2, 191.5), pier, Enum.Material.Wood, false)
+	end
+	local boats = {}
+	for _, spec in ipairs({
+		{ Vector3.new(120, 0, 220), 0, 0 },
+		{ Vector3.new(-150, 0, -210), math.rad(35), 2.3 },
+	}) do
+		local model, pivotY = buildBoat()
+		model.Parent = world
+		table.insert(boats, {
+			model = model,
+			home = spec[1],
+			heading = spec[2],
+			phase = spec[3],
+			pivotY = pivotY,
+		})
+	end
+
+	-- v3.6 decor: benches, flower beds, extra lamps, waving flag poles
+	-- and two more big readable signs.
+	local decor2 = Instance.new("Folder")
+	decor2.Name = "Decor2"
+	decor2.Parent = world
+	for _, spot in ipairs({ Vector3.new(-20, 0, -140), Vector3.new(20, 0, -140), Vector3.new(-20, 0, 165), Vector3.new(20, 0, 165) }) do
+		part("BenchSeat", Vector3.new(4, 0.5, 1.5), Color3.fromRGB(150, 100, 55), spot + Vector3.new(0, BEACH_TOP_Y + 1.2, 0), decor2, Enum.Material.Wood)
+		part("BenchBack", Vector3.new(4, 1.5, 0.3), Color3.fromRGB(150, 100, 55), spot + Vector3.new(0, BEACH_TOP_Y + 2, -0.7), decor2, Enum.Material.Wood)
+		for _, sx in ipairs({ -1, 1 }) do
+			part("BenchLeg", Vector3.new(0.4, 1.2, 1.2), Color3.fromRGB(90, 60, 35), spot + Vector3.new(sx * 1.7, BEACH_TOP_Y + 0.6, 0), decor2, Enum.Material.Wood)
+		end
+	end
+	local flowerColors = {
+		Color3.fromRGB(255, 90, 140), Color3.fromRGB(255, 200, 60),
+		Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 255, 255),
+		Color3.fromRGB(255, 120, 60),
+	}
+	for bi, spot in ipairs({ Vector3.new(-40, 0, -140), Vector3.new(40, 0, -140), Vector3.new(-40, 0, 165), Vector3.new(40, 0, 165) }) do
+		local soil = Instance.new("Part")
+		soil.Name = "FlowerBed"
+		soil.Shape = Enum.PartType.Cylinder
+		soil.Size = Vector3.new(0.8, 6, 6)
+		soil.Color = Color3.fromRGB(90, 60, 35)
+		soil.Anchored = true
+		soil.CanCollide = false
+		soil.CFrame = CFrame.new(spot + Vector3.new(0, BEACH_TOP_Y + 0.4, 0))
+		soil.Parent = decor2
+		for fi = 1, 5 do
+			local a = (fi / 5) * math.pi * 2 + bi
+			local flower = Instance.new("Part")
+			flower.Name = "Flower"
+			flower.Shape = Enum.PartType.Ball
+			flower.Size = Vector3.new(0.9, 0.9, 0.9)
+			flower.Color = flowerColors[((fi + bi) % #flowerColors) + 1]
+			flower.Anchored = true
+			flower.CanCollide = false
+			flower.Position = spot + Vector3.new(math.cos(a) * 1.8, BEACH_TOP_Y + 1.1, math.sin(a) * 1.8)
+			flower.Parent = decor2
+		end
+	end
+	for _, spot in ipairs({ Vector3.new(-100, 0, -100), Vector3.new(100, 0, -100), Vector3.new(-100, 0, 0), Vector3.new(100, 0, 0), Vector3.new(-100, 0, 100), Vector3.new(100, 0, 100) }) do
+		part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(50, 50, 60), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), decor2)
+		part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), spot + Vector3.new(0, BEACH_TOP_Y + 7.4, 0), decor2, Enum.Material.Neon, false)
+	end
+	local waveFlags = {}
+	for fi, spot in ipairs({ Vector3.new(-70, 0, -165), Vector3.new(70, 0, -165), Vector3.new(-70, 0, 175), Vector3.new(70, 0, 175) }) do
+		local pole = Instance.new("Part")
+		pole.Name = "FlagPole"
+		pole.Shape = Enum.PartType.Cylinder
+		pole.Size = Vector3.new(12, 0.5, 0.5)
+		pole.Color = Color3.fromRGB(90, 90, 100)
+		pole.Anchored = true
+		pole.CanCollide = true
+		pole.CFrame = CFrame.new(spot + Vector3.new(0, BEACH_TOP_Y + 6, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		pole.Parent = decor2
+		local flag = part("Flag", Vector3.new(3, 2, 0.15), flagColors[((fi - 1) % #flagColors) + 1], spot + Vector3.new(1.6, BEACH_TOP_Y + 11, 0), decor2, Enum.Material.Fabric, false)
+		table.insert(waveFlags, { part = flag, base = flag.CFrame, phase = fi * 1.7 })
+	end
+	for _, s in ipairs({
+		{ Vector3.new(0, 0, 168), "SOUTH MARKET" },
+		{ Vector3.new(185, 0, -140), "LIGHTHOUSE POINT" },
+	}) do
+		local sp = s[1]
+		for _, sx in ipairs({ -1, 1 }) do
+			part("SignPost", Vector3.new(0.5, 6, 0.5), Color3.fromRGB(90, 60, 35), sp + Vector3.new(sx * 7, BEACH_TOP_Y + 3, 0), decor2, Enum.Material.Wood)
+		end
+		signBoard(decor2, sp + Vector3.new(0, BEACH_TOP_Y + 7, 0), s[2], Color3.fromRGB(255, 220, 80), Vector3.new(16, 4, 0.6))
+	end
+
 	-- ONE animation loop for the whole bay (v3.4): tall trees lean and
 	-- sway, ground animals wander in small circles with a gentle bob, and
 	-- the birds orbit overhead banking and flapping. A single task.spawn
@@ -1055,6 +1498,36 @@ function WorldBuilder.build()
 					wing.part.CFrame = pivot * CFrame.new(wing.attach)
 						* CFrame.Angles(0, 0, wing.side * flap) * CFrame.new(wing.centre - wing.attach)
 				end
+			end
+			-- v3.6: the lighthouse beams sweep slowly, the flag poles wave,
+			-- butterflies flutter over the flower beds, and the boats bob.
+			for _, beam in ipairs(beams) do
+				local angle = t * 0.5
+				beam.part.CFrame = CFrame.new(beam.pivot) * CFrame.Angles(0, angle, 0) * CFrame.new(beam.dir * 13, 0, 0)
+			end
+			for _, f in ipairs(waveFlags) do
+				local w = math.sin(t * 2 + f.phase)
+				f.part.CFrame = f.base * CFrame.Angles(0, w * 0.1, w * 0.12)
+			end
+			for _, b in ipairs(butterflies) do
+				local a = t * b.speed + b.phase
+				local x = b.centre.X + math.cos(a) * b.radius
+				local z = b.centre.Z + math.sin(a) * b.radius
+				local y = b.centre.Y + math.sin(t * 1.3 + b.phase) * 0.8
+				local heading = math.atan2(-math.sin(a), math.cos(a))
+				local pivot = CFrame.new(x, y, z) * CFrame.Angles(0, heading, 0)
+				b.model:PivotTo(pivot)
+				local flap = math.rad(40) * math.sin(t * 10 + b.phase)
+				for _, wing in ipairs(b.wings) do
+					wing.part.CFrame = pivot * CFrame.new(wing.attach)
+						* CFrame.Angles(0, 0, wing.side * flap) * CFrame.new(wing.centre - wing.attach)
+				end
+			end
+			for _, boat in ipairs(boats) do
+				local bob = math.sin(t * 0.8 + boat.phase) * 0.3
+				local roll = math.rad(3) * math.sin(t * 0.8 + boat.phase + 1)
+				boat.model:PivotTo(CFrame.new(boat.home.X, 0.5 + boat.pivotY + bob, boat.home.Z)
+					* CFrame.Angles(0, boat.heading, roll))
 			end
 			task.wait(0.1)
 		end

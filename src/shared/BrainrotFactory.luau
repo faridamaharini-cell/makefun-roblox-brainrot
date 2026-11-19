@@ -7,7 +7,7 @@ local BrainrotData = require(script.Parent.BrainrotData)
 
 local BrainrotFactory = {}
 
--- Characters are built big: MODEL_SCALE 1.5 makes a ~5.7-stud character
+-- Characters are built big: MODEL_SCALE 1.5 makes the ~5.7-stud character
 -- ~8.6 studs tall, so they read as big creatures next to the player (like
 -- the Rot Ranch animals). The model pivot is the Body centre, which sits
 -- 2.5 studs above the feet before scaling, so callers must place the pivot
@@ -52,15 +52,32 @@ local function makeBall(name, diameter, color, parent, material)
 	return ball
 end
 
+-- A vertical cylinder: a Cylinder part's length axis is X, so rotate the
+-- CFrame 90 degrees about Z to stand it upright. Used for the torso and
+-- limbs so the characters read as rounded creatures, not square boxes.
+local function makeCylinder(name, diameter, length, color, position, parent, material)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new(length, diameter, diameter)
+	part.Color = color
+	part.Material = material or Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = false
+	part.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+	part.Parent = parent
+	return part
+end
+
 -- One builder per accessory kind. Each receives the model, the head part and
 -- the character definition; positions are relative to the head centre.
 local AccessoryBuilders = {}
 
 AccessoryBuilders.hat = function(model, head, def)
 	local brim = makeBox("HatBrim", Vector3.new(3.4, 0.35, 3.4), def.body, model)
-	brim.Position = head.Position + Vector3.new(0, 1.05, 0)
+	brim.Position = head.Position + Vector3.new(0, 1.25, 0)
 	local top = makeBox("HatTop", Vector3.new(1.9, 1.3, 1.9), def.body, model)
-	top.Position = head.Position + Vector3.new(0, 1.85, 0)
+	top.Position = head.Position + Vector3.new(0, 2.05, 0)
 end
 
 AccessoryBuilders.crown = function(model, head, _def)
@@ -75,17 +92,17 @@ end
 
 AccessoryBuilders.cape = function(model, head, _def)
 	local cape = makeBox("Cape", Vector3.new(2.9, 3.4, 0.25), Color3.fromRGB(165, 30, 45), model, Enum.Material.Fabric)
-	cape.Position = head.Position + Vector3.new(0, -1.7, -1.2)
+	cape.Position = head.Position + Vector3.new(0, -1.7, -1.55)
 end
 
 AccessoryBuilders.glasses = function(model, head, _def)
 	local dark = Color3.fromRGB(25, 25, 35)
 	for _, offsetX in ipairs({ -0.55, 0.55 }) do
 		local lens = makeBox("GlassesLens", Vector3.new(0.95, 0.7, 0.15), dark, model, Enum.Material.Glass)
-		lens.Position = head.Position + Vector3.new(offsetX, 0.1, 1.02)
+		lens.Position = head.Position + Vector3.new(offsetX, 0.1, 1.15)
 	end
 	local bridge = makeBox("GlassesBridge", Vector3.new(0.45, 0.15, 0.15), dark, model)
-	bridge.Position = head.Position + Vector3.new(0, 0.1, 1.02)
+	bridge.Position = head.Position + Vector3.new(0, 0.1, 1.15)
 end
 
 AccessoryBuilders.antenna = function(model, head, _def)
@@ -118,17 +135,17 @@ end
 
 AccessoryBuilders.mustache = function(model, head, _def)
 	local mo = makeBox("Mustache", Vector3.new(1.7, 0.35, 0.3), Color3.fromRGB(55, 38, 22), model)
-	mo.Position = head.Position + Vector3.new(0, -0.6, 1.02)
+	mo.Position = head.Position + Vector3.new(0, -0.6, 1.12)
 end
 
 AccessoryBuilders.bowtie = function(model, head, _def)
 	for _, side in ipairs({ -1, 1 }) do
 		local knot = makeBox("Bowtie", Vector3.new(0.95, 0.6, 0.2), Color3.fromRGB(205, 30, 55), model)
-		knot.Position = head.Position + Vector3.new(side * 0.55, -2.35, 1.0)
+		knot.Position = head.Position + Vector3.new(side * 0.55, -2.35, 1.45)
 		knot.CFrame = CFrame.new(knot.Position) * CFrame.Angles(0, 0, side * 0.65)
 	end
 	local centre = makeBox("BowtieKnot", Vector3.new(0.4, 0.4, 0.25), Color3.fromRGB(205, 30, 55), model)
-	centre.Position = head.Position + Vector3.new(0, -2.35, 1.0)
+	centre.Position = head.Position + Vector3.new(0, -2.35, 1.45)
 end
 
 local function makeLabel(name, text, textColor, positionY, parent)
@@ -172,32 +189,31 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 	local model = Instance.new("Model")
 	model.Name = def.name
 
-	-- Torso (2.8 x 2.6 x 2, centre y 2.5) is the PrimaryPart.
-	local body = makeBox("Body", Vector3.new(2.8, 2.6, 2), bodyColor, model)
-	body.Position = Vector3.new(0, 2.5, 0)
+	-- Torso (vertical cylinder, diameter 2.8, height 2.6, centre y 2.5)
+	-- is the PrimaryPart. Feet stay at model y 0, pivot at y 2.5.
+	local body = makeCylinder("Body", 2.8, 2.6, bodyColor, Vector3.new(0, 2.5, 0), model)
 	if bodyNeon then
 		body.Material = Enum.Material.Neon
 	end
 	model.PrimaryPart = body
 
-	-- Head (2.2 cube, centre y 4.6) sits on the torso.
-	local head = makeBox("Head", Vector3.new(2.2, 2, 2.2), headColor, model)
+	-- Head (ball, diameter 2.4, centre y 4.6) sits on the torso.
+	local head = makeBall("Head", 2.4, headColor, model)
 	head.Position = Vector3.new(0, 4.6, 0)
 
-	-- Eyes on the +Z face of the head, with dark pupils.
+	-- Eyes on the +Z face of the round head, with dark pupils. Pushed
+	-- slightly out (Z 1.15/1.19) so they sit on the ball's surface.
 	for _, offsetX in ipairs({ -0.55, 0.55 }) do
 		local eye = makeBox("Eye", Vector3.new(0.55, 0.65, 0.12), Color3.fromRGB(255, 255, 255), model)
-		eye.Position = Vector3.new(offsetX, 4.75, 1.12)
+		eye.Position = Vector3.new(offsetX, 4.75, 1.15)
 		local pupil = makeBox("Pupil", Vector3.new(0.28, 0.34, 0.12), Color3.fromRGB(20, 20, 20), model)
-		pupil.Position = Vector3.new(offsetX, 4.7, 1.16)
+		pupil.Position = Vector3.new(offsetX, 4.7, 1.19)
 	end
 
-	-- Arms at the torso sides and legs under the torso.
+	-- Arms and legs under the torso, as cylinders like the body.
 	for _, side in ipairs({ -1, 1 }) do
-		local arm = makeBox("Arm", Vector3.new(0.7, 2.0, 0.7), bodyColor, model)
-		arm.Position = Vector3.new(side * 1.75, 2.5, 0)
-		local leg = makeBox("Leg", Vector3.new(0.9, 1.2, 0.9), Color3.fromRGB(60, 60, 70), model)
-		leg.Position = Vector3.new(side * 0.65, 0.6, 0)
+		makeCylinder("Arm", 0.7, 2.0, bodyColor, Vector3.new(side * 1.75, 2.5, 0), model)
+		makeCylinder("Leg", 0.9, 1.2, Color3.fromRGB(60, 60, 70), Vector3.new(side * 0.65, 0.6, 0), model)
 	end
 
 	local buildAccessory = AccessoryBuilders[def.accessory]

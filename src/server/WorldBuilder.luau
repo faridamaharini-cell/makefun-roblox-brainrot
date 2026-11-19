@@ -33,10 +33,11 @@ local SLOT_ROWS = { -8, 0, 8 }
 -- beach (and everything standing on it) uses this as its ground level.
 local BEACH_TOP_Y = 0.2
 
--- Building scale: v3.2 makes the town's buildings ~1.4x bigger (Rot Ranch
--- reference), scaled around each building's own ground centre. Every
--- building helper multiplies its widths, heights and offsets by BS.
-local BS = 1.4
+-- Building scale: v3.3 makes the town's buildings ~1.8x bigger (Rot Ranch
+-- reference), so they clearly tower over the ~5-stud player. Scaled
+-- around each building's own ground centre. Every building helper
+-- multiplies its widths, heights and offsets by BS.
+local BS = 1.8
 
 local function part(name, size, color, position, parent, material, collide)
 	local p = Instance.new("Part")
@@ -534,11 +535,12 @@ function WorldBuilder.build()
 	-- Town centre by the spawn plaza: a barn and a shop facing the plaza.
 	barn(buildings, Vector3.new(-45, 0, -178), Color3.fromRGB(200, 60, 60), Color3.fromRGB(90, 60, 35), 1)
 	shop(buildings, Vector3.new(45, 0, -178), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1)
-	-- Houses flanking the conveyor, fronts facing the conveyor.
-	house(buildings, Vector3.new(-22, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
-	house(buildings, Vector3.new(22, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
-	house(buildings, Vector3.new(-22, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
-	house(buildings, Vector3.new(22, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
+	-- Houses flanking the conveyor, fronts facing the conveyor. At BS 1.8
+	-- they sit at X ±25 so the bigger porches clear the fences at X ±9.
+	house(buildings, Vector3.new(-25, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
+	house(buildings, Vector3.new(25, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
+	house(buildings, Vector3.new(-25, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
+	house(buildings, Vector3.new(25, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
 	-- Smaller huts further down the conveyor.
 	hut(buildings, Vector3.new(-20, 0, -90), Color3.fromRGB(255, 160, 80), Color3.fromRGB(90, 160, 255), 1, 1)
 	hut(buildings, Vector3.new(20, 0, 90), Color3.fromRGB(140, 220, 255), Color3.fromRGB(200, 60, 60), -1, 2)
@@ -595,9 +597,11 @@ function WorldBuilder.build()
 	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(-24, BEACH_TOP_Y + 3.75, -156), props, Enum.Material.Wood)
 	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(24, BEACH_TOP_Y + 1.25, 170), props, Enum.Material.Wood)
 	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(24, BEACH_TOP_Y + 3.75, 170), props, Enum.Material.Wood)
-	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(-36, BEACH_TOP_Y + 1.25, -172), props, Enum.Material.Wood)
-	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(38, BEACH_TOP_Y + 1.25, -172), props, Enum.Material.Wood)
-	for _, spot in ipairs({ Vector3.new(24, 0, -156), Vector3.new(-24, 0, 168), Vector3.new(-36, 0, -170), Vector3.new(36, 0, -170) }) do
+	-- Props moved out of the barn/shop footprints when the buildings grew
+	-- to BS 1.8 (barn spans X -57.6..-32.4, shop X 35.1..54.9, Z -187..-169).
+	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(-62, BEACH_TOP_Y + 1.25, -156), props, Enum.Material.Wood)
+	part("Crate", Vector3.new(2.5, 2.5, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(62, BEACH_TOP_Y + 1.25, -156), props, Enum.Material.Wood)
+	for _, spot in ipairs({ Vector3.new(24, 0, -156), Vector3.new(-24, 0, 168), Vector3.new(-60, 0, -160), Vector3.new(60, 0, -160) }) do
 		local barrel = Instance.new("Part")
 		barrel.Name = "Barrel"
 		barrel.Shape = Enum.PartType.Cylinder
@@ -608,7 +612,7 @@ function WorldBuilder.build()
 		barrel.CFrame = CFrame.new(spot + Vector3.new(0, BEACH_TOP_Y + 1.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
 		barrel.Parent = props
 	end
-	for _, spot in ipairs({ Vector3.new(-34, 0, -186), Vector3.new(-31, 0, -186), Vector3.new(52, 0, -186), Vector3.new(55, 0, -186) }) do
+	for _, spot in ipairs({ Vector3.new(-63, 0, -186), Vector3.new(-60, 0, -186), Vector3.new(60, 0, -186), Vector3.new(63, 0, -186) }) do
 		local bale = Instance.new("Part")
 		bale.Name = "HayBale"
 		bale.Shape = Enum.PartType.Cylinder

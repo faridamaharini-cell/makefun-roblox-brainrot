@@ -116,7 +116,10 @@ function WorldBuilder.build()
 	world.Parent = Workspace
 
 	-- Warm afternoon sun, Future lighting, a soft hazy sky.
-	Lighting.Technology = Enum.Technology.Future
+	-- (Lighting.Technology is NOT written here: it needs the RobloxScript
+	-- capability, which a game Script lacks, so writing it killed build()
+	-- on its first Lighting line. Future is already baked into the place
+	-- by default.project.json's Lighting properties.)
 	Lighting.ClockTime = 15
 	Lighting.Brightness = 2
 	Lighting.Ambient = Color3.fromRGB(90, 80, 70)

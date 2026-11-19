@@ -1,1 +1,1 @@
-{"tour": 1, "steps": [{"screenshot": "1-start.png"}, {"screenshot": "2-play.png", "keys": ["Right"], "wait_ms": 1000}, {"screenshot": "3-end.png", "keys": ["Down"], "wait_ms": 1000}]}
+{"steps":[{"screenshot":"1-start.png"},{"call":{"arg":50000,"fn":"grant","module":"ServerScriptService.Server.TourHelper","on":"Server"},"keys":["W"],"screenshot":"2-play.png","wait_ms":2000},{"call":{"arg":"go","fn":"wave","module":"ServerScriptService.Server.TourHelper","on":"Server"},"screenshot":"3-end.png"}],"tour":1}

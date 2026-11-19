@@ -13,13 +13,29 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-roblox.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+
+/** Refuse to hand in a place or screenshots the scorer would refuse, before
+ *  anything is copied: game.rbxl over the 32 MiB place cap, more than 4
+ *  screenshots, or any screenshot over the 256 KiB cap. Failing here is
+ *  cheaper than a 0 on the gate. */
+const placeStat = statSync(join(here, 'game.rbxl'));
+if (placeStat.size > 32 * 1024 * 1024) throw new Error(`game.rbxl is ${placeStat.size} bytes, over the 32 MiB place cap — rebuild it smaller`);
+const shotDir = join(here, 'screenshots');
+if (existsSync(shotDir)) {
+  const shots = readdirSync(shotDir).filter((name) => !name.startsWith('.'));
+  if (shots.length > 4) throw new Error(`${shots.length} screenshots, over the 4-screenshot cap`);
+  for (const shot of shots) {
+    const size = statSync(join(shotDir, shot)).size;
+    if (size > 262144) throw new Error(`screenshots/${shot} is ${size} bytes, over the 256 KiB screenshot cap — re-encode it smaller`);
+  }
+}
 
 /** cpSync's filter: leave out every file and directory whose name starts with a dot (.gitkeep, .DS_Store, .git). */
 const notDotted = (path: string): boolean => !basename(path).startsWith('.');

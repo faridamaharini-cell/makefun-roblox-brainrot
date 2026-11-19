@@ -72,9 +72,15 @@ function BaseService.placeInSlot(entry, baseIndex, slotIndex)
 	entry.slotIndex = slotIndex
 	entry.model:SetAttribute("State", "owned")
 	entry.model:SetAttribute("OwnerUserId", entry.ownerId)
-	-- pos.Y is the pad top; pivot is the Body centre, PIVOT_ABOVE_FEET
-	-- above the feet, so the model stands on the pad instead of sinking.
-	entry.model:PivotTo(CFrame.new(pos + Vector3.new(0, 0.1 + BrainrotFactory.PIVOT_ABOVE_FEET, 0)))
+	-- pos.Y is the pad top. v4 pivot: placeOnSurface MEASURES the live
+	-- model's lowest point and corrects Y until the feet sit exactly on
+	-- the pad — the old constant placement sank slot brainrots under
+	-- their pads in v3.6. Store the measured offset for the idle-bob
+	-- loop in init.server, and stagger the label by slot so neighbours
+	-- never stack.
+	local groundOffset = BrainrotFactory.placeOnSurface(entry.model, pos.Y, pos.X, pos.Z)
+	entry.groundOffset = groundOffset
+	BrainrotFactory.staggerLabel(entry.model, slotIndex)
 	local folder = Workspace:FindFirstChild("OwnedBrainrots")
 	if folder then
 		entry.model.Parent = folder

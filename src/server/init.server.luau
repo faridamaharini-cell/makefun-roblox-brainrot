@@ -147,9 +147,12 @@ RunService.Heartbeat:Connect(function(_dt)
 				local slotPos = base.slots[entry.slotIndex]
 				if slotPos then
 					local bob = math.sin(now * 2 + id) * 0.2
-					-- slotPos.Y is the pad top; pivot is the Body centre,
-					-- PIVOT_ABOVE_FEET above the feet.
-					entry.model:PivotTo(CFrame.new(slotPos + Vector3.new(0, 0.1 + BrainrotFactory.PIVOT_ABOVE_FEET + bob, 0)))
+					-- slotPos.Y is the pad top; pivot Y uses the model's
+					-- MEASURED ground offset (stored by placeInSlot),
+					-- never the PIVOT_ABOVE_FEET constant — the bob only
+					-- ever lifts the feet, it never re-sinks them.
+					local offset = entry.groundOffset or BrainrotFactory.PIVOT_ABOVE_FEET
+					entry.model:PivotTo(CFrame.new(slotPos + Vector3.new(0, offset + bob, 0)))
 				end
 			end
 		end

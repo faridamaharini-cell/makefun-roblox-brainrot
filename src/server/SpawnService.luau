@@ -53,9 +53,13 @@ function SpawnService.spawnOne(forceRarity)
 
 	local model = BrainrotFactory.buildBrainrotModel(def, mutation)
 	model:SetAttribute("BrainrotId", id)
-	-- Pivot is the Body centre: place it PIVOT_ABOVE_FEET above the
-	-- conveyor top (Y=1) so the feet stand on the belt, not under it.
-	model:PivotTo(CFrame.new(0, 1 + BrainrotFactory.PIVOT_ABOVE_FEET, Config.ConveyorStartZ))
+	-- v4 pivot: placeOnSurface MEASURES the live model's lowest point
+	-- (GetBoundingBox) and corrects Y until the feet sit exactly on the
+	-- conveyor top (Y=1). The old constant PIVOT_ABOVE_FEET placement
+	-- sank bodies under the belt in v3.6. Store the measured offset so
+	-- the Heartbeat waddle below reuses it instead of the constant.
+	local groundOffset = BrainrotFactory.placeOnSurface(model, 1, 0, Config.ConveyorStartZ)
+	BrainrotFactory.staggerLabel(model, id)
 	model.Parent = walkersFolder
 
 	local prompt = model:FindFirstChild("InteractPrompt", true)
@@ -73,6 +77,7 @@ function SpawnService.spawnOne(forceRarity)
 		mutation = mutation,
 		price = BrainrotData.priceFor(def, mutation),
 		income = BrainrotData.incomeFor(def, mutation),
+		groundOffset = groundOffset,
 	}
 	return id
 end
@@ -109,8 +114,13 @@ function SpawnService.start()
 					State.walkers[id] = nil
 				else
 					-- A gentle waddle: side-to-side sway plus a tiny bob.
+					-- v4: pivot Y uses the walker's MEASURED ground offset
+					-- (stored at spawn), never the PIVOT_ABOVE_FEET
+					-- constant — the bob only ever lifts the feet, it
+					-- never re-sinks them.
 					local sway = math.sin(os.clock() * 4 + id) * 0.8
-					model:PivotTo(CFrame.new(sway, 1 + BrainrotFactory.PIVOT_ABOVE_FEET + math.abs(math.sin(os.clock() * 6 + id)) * 0.15, newZ))
+					local offset = walker.groundOffset or BrainrotFactory.PIVOT_ABOVE_FEET
+					model:PivotTo(CFrame.new(sway, 1 + offset + math.abs(math.sin(os.clock() * 6 + id)) * 0.15, newZ))
 				end
 			end
 		end

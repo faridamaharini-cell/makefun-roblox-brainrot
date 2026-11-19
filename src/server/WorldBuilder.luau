@@ -16,6 +16,17 @@
 -- lighthouse with rotating beams, a pier with bobbing sailboats, benches,
 -- flower beds, extra lamps, waving flags, more signs, five more big
 -- animals (dog, horse, duck, sheep, goat) and butterflies.
+-- v4 REBUILD (from the v3.6 screenshot): the town/buildings/game loop are
+-- kept, but the three defects are rebuilt from zero — (1) ground: the
+-- 460x400 beach left grey baseplate showing everywhere, so the ground is
+-- now a full 512x512 sand plate + grass town lawns + turquoise sea bands,
+-- with a runtime coverage check proving every cell is covered; (2) signs:
+-- 16-30-stud AlwaysOnTop boards are gone, only small non-AlwaysOnTop
+-- plates remain (one arch title, one per base, one per shop front) and
+-- all free-standing sign posts are deleted; (3) brainrot visibility is
+-- fixed at the source — see BrainrotFactory.placeOnSurface (measured
+-- bounding-box placement, not the PIVOT_ABOVE_FEET constant) and the
+-- small staggered labels there.
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
@@ -75,13 +86,20 @@ local function part(name, size, color, position, parent, material, collide)
 	return p
 end
 
--- A dark board with a floating text label that always faces the camera.
+-- A small board with a text label that faces the camera.
+-- v4: SMALL and never AlwaysOnTop — v3.6 used 16-30-stud boards with a
+-- 300x80 AlwaysOnTop billboard, so every sign in the spawn view merged
+-- into one unreadable jumble that hid the brainrots behind it. Boards
+-- are now at most ~7 studs wide with a 150x30 label, they sit high on a
+-- single building/wall, and free-standing sign posts are gone entirely:
+-- the only signs left are the one arch title, one small plate per base
+-- (on its back wall, low) and one small plate per shop front.
 local function signBoard(parent, position, text, textColor, boardSize)
-	local board = part("Sign", boardSize or Vector3.new(16, 4.5, 0.6), Color3.fromRGB(30, 30, 42), position, parent)
+	local board = part("Sign", boardSize or Vector3.new(7, 1.8, 0.4), Color3.fromRGB(30, 30, 42), position, parent)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "SignLabel"
-	gui.Size = UDim2.new(0, 300, 0, 80)
-	gui.AlwaysOnTop = true
+	gui.Size = UDim2.new(0, 150, 0, 30)
+	gui.AlwaysOnTop = false
 	gui.Parent = board
 	local label = Instance.new("TextLabel")
 	label.Name = "SignText"
@@ -271,7 +289,7 @@ local function shop(parent, pos, wallColor, roofColor, index, name)
 	part("ShopWindowGlass", Vector3.new(4.1 * BS, 2.2 * BS, 0.26 * BS), Color3.fromRGB(150, 210, 255), Vector3.new(pos.X + 2 * BS, baseY + 3.4 * BS, faceZ + 0.14 * BS), s, Enum.Material.Glass, false)
 	xWindow(s, pos.X + W / 2, baseY + 3.6 * BS, pos.Z, 1)
 	xWindow(s, pos.X - W / 2, baseY + 3.6 * BS, pos.Z, -1)
-	signBoard(s, Vector3.new(pos.X, baseY + 5.8 * BS, faceZ + 0.4 * BS), name or "TIDE SHOP", Color3.fromRGB(255, 220, 80), Vector3.new(8 * BS, 2.5 * BS, 0.4 * BS))
+	signBoard(s, Vector3.new(pos.X, baseY + 5.8 * BS, faceZ + 0.4 * BS), name or "TIDE SHOP", Color3.fromRGB(255, 220, 80), Vector3.new(6, 1.5, 0.4))
 	local ridgeY = baseY + H + 3 * BS
 	pitchedRoof(s, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1 * BS, 3 * BS, W + 1 * BS, roofColor, "X")
 	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X + 3 * BS, ridgeY - 1 * BS, pos.Z + 2 * BS), s, Enum.Material.SmoothPlastic)
@@ -825,27 +843,77 @@ function WorldBuilder.build()
 	atmosphere.Haze = 1.5
 	atmosphere.Parent = Lighting
 
-	-- The beach itself: a wide sand plate whose top sits clearly above the
-	-- project baseplate (top Y=0), so the sand wins the depth fight and the
-	-- ground reads as a beach, not a grey baseplate.
-	part("Beach", Vector3.new(460, 1, 400), Color3.fromRGB(238, 214, 150), Vector3.new(0, BEACH_TOP_Y - 0.5, 5), world, Enum.Material.Sand)
+	-- v4 GROUND — the whole point of the rebuild. v3.6's beach was a
+	-- single 460x400 plate, so 26-stud strips of grey studded baseplate
+	-- showed on every side — and in the player's screenshot the ground
+	-- read as grey baseplate everywhere. Here the ENTIRE 512x512 map is
+	-- covered, in layers, all above the baseplate top (Y=0):
+	--   1. sand: one 512x512 Sand plate, top Y=0.2, covers everything.
+	--   2. grass: two town lawns (top Y=0.35) under the houses/shops.
+	--   3. water: turquoise sea bands along the north/south shores
+	--      (top Y=0.5), full width, where the pier and boats sit.
+	-- Nothing grey can show: every (x, z) in [-256, 256]^2 is sand at
+	-- worst. checkGroundCoverage() below PROVES it in code (a 32x32
+	-- grid over the whole map; build() errors if any cell is bare).
+	local groundTiles = {}
+	local function groundTile(name, sizeX, sizeZ, cx, cz, topY, color, material, collide)
+		local tile = part(name, Vector3.new(sizeX, topY * 2, sizeZ), color, Vector3.new(cx, 0, cz), world, material, collide)
+		-- part() centres the part at (cx, 0, cz) with height topY*2, so
+		-- its top is exactly topY; fix the centre Y the part() call set.
+		tile.Position = Vector3.new(cx, topY - tile.Size.Y / 2, cz)
+		table.insert(groundTiles, { x0 = cx - sizeX / 2, x1 = cx + sizeX / 2, z0 = cz - sizeZ / 2, z1 = cz + sizeZ / 2, top = topY })
+		return tile
+	end
+	-- Sand and grass MUST collide (they are the floor players walk on);
+	-- the sea must NOT collide (players wade to the shore, boats float).
+	groundTile("Sand", 512, 512, 0, 0, 0.2, Color3.fromRGB(238, 214, 150), Enum.Material.Sand, true)
+	groundTile("GrassWest", 160, 340, -150, 0, 0.35, Color3.fromRGB(110, 200, 90), Enum.Material.Grass, true)
+	groundTile("GrassEast", 160, 340, 150, 0, 0.35, Color3.fromRGB(110, 200, 90), Enum.Material.Grass, true)
+	groundTile("SeaNorth", 512, 51, 0, -230.5, 0.5, Color3.fromRGB(40, 180, 220), Enum.Material.Neon, false)
+	groundTile("SeaSouth", 512, 51, 0, 230.5, 0.5, Color3.fromRGB(40, 180, 220), Enum.Material.Neon, false)
+	-- Coverage proof: every cell of a 32x32 grid over the map must be
+	-- inside at least one ground tile. (Sand alone covers all 1024
+	-- cells; the check guards against a future edit shrinking it.)
+	local function checkGroundCoverage()
+		local covered, total = 0, 0
+		for gx = 0, 31 do
+			for gz = 0, 31 do
+				local x = -256 + (gx + 0.5) * 16
+				local z = -256 + (gz + 0.5) * 16
+				total += 1
+				for _, t in ipairs(groundTiles) do
+					if x >= t.x0 and x <= t.x1 and z >= t.z0 and z <= t.z1 then
+						covered += 1
+						break
+					end
+				end
+			end
+		end
+		print("v4 ground coverage: " .. covered .. "/" .. total .. " cells covered")
+		assert(covered == total, "v4 ground coverage FAILED: " .. (total - covered) .. " bare cells — grey baseplate would show")
+	end
+	checkGroundCoverage()
 
-	-- Animated water hugging the far edges of the island.
+	-- Animated water shimmer: the two sea bands bob gently around their
+	-- base height (absolute Y each tick — never accumulated, or the sea
+	-- would drift away over minutes).
 	local water = Instance.new("Folder")
 	water.Name = "Water"
 	water.Parent = world
 	local waterParts = {}
-	for _, z in ipairs({ 208, -198 }) do
-		local sea = part("Sea", Vector3.new(460, 1, 70), Color3.fromRGB(40, 140, 230), Vector3.new(0, 0, z), water, Enum.Material.Neon, false)
-		sea.Transparency = 0.3
-		table.insert(waterParts, sea)
+	for _, sea in ipairs(world:GetChildren()) do
+		if sea.Name == "SeaNorth" or sea.Name == "SeaSouth" then
+			sea.Transparency = 0.25
+			table.insert(waterParts, { part = sea, baseY = sea.Position.Y })
+		end
 	end
 	task.spawn(function()
 		local t = 0
 		while world.Parent do
 			t += 0.15
-			for _, sea in ipairs(waterParts) do
-				sea.Position = Vector3.new(0, math.sin(t) * 0.25, sea.Position.Z)
+			for _, entry in ipairs(waterParts) do
+				local sea = entry.part
+				sea.Position = Vector3.new(sea.Position.X, entry.baseY + math.sin(t) * 0.1, sea.Position.Z)
 			end
 			task.wait(0.15)
 		end
@@ -886,7 +954,7 @@ function WorldBuilder.build()
 	for _, side in ipairs({ -1, 1 }) do
 		part("ArchPost", Vector3.new(1.5, 13, 1.5), Color3.fromRGB(255, 90, 140), Vector3.new(side * 8, 6.5, -148), arch)
 	end
-	signBoard(arch, Vector3.new(0, 14, -148), "BRAINROT BAY", Color3.fromRGB(255, 220, 80), Vector3.new(30, 5, 0.6))
+	signBoard(arch, Vector3.new(0, 14, -148), "BRAINROT BAY", Color3.fromRGB(255, 220, 80), Vector3.new(16, 2.5, 0.6))
 
 	-- Spawn plaza: checker tiles where newcomers first land.
 	local plaza = Instance.new("Folder")
@@ -898,7 +966,8 @@ function WorldBuilder.build()
 			part("PlazaTile", Vector3.new(4.8, 0.2, 4.8), color, Vector3.new(-17.5 + col * 5, BEACH_TOP_Y + 0.1, -172 + row * 5), plaza, Enum.Material.SmoothPlastic, false)
 		end
 	end
-	signBoard(plaza, Vector3.new(0, 9, -178), "WELCOME TO THE BAY", Color3.fromRGB(120, 255, 140), Vector3.new(24, 4, 0.6))
+	-- v4: no WELCOME sign — the arch title above is the only greeting;
+	-- a second big sign 30 studs behind it was half the spawn-view jumble.
 
 	-- Ten bases: two rows of five flanking the conveyor.
 	local basesFolder = Instance.new("Folder")
@@ -931,7 +1000,7 @@ function WorldBuilder.build()
 			-- Green spawn pad on the conveyor-facing edge.
 			local spawnPos = center + Vector3.new(side * -18, 1, 0)
 			part("SpawnPad", Vector3.new(4, 0.2, 4), Color3.fromRGB(120, 255, 140), spawnPos, baseFolder, Enum.Material.Neon, false)
-			local _, signLabel = signBoard(baseFolder, center + Vector3.new(0, 9, 0), "BASE " .. index, color)
+			local _, signLabel = signBoard(baseFolder, center + Vector3.new(0, 7.5, 0), "BASE " .. index, color, Vector3.new(6, 1.5, 0.4))
 			-- Lock force-field: invisible until the base is locked.
 			local lockField = part("LockField", Vector3.new(30, 8, 30), Color3.fromRGB(90, 160, 255), center + Vector3.new(0, 4, 0), baseFolder, Enum.Material.Neon, false)
 			lockField.Transparency = 1
@@ -1128,16 +1197,9 @@ function WorldBuilder.build()
 		part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(50, 50, 60), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), props)
 		part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), spot + Vector3.new(0, BEACH_TOP_Y + 7.4, 0), props, Enum.Material.Neon, false)
 	end
-	for _, s in ipairs({
-		{ Vector3.new(-14, 0, -152), "MARKET" },
-		{ Vector3.new(14, 0, 152), "FRESH BRAINROTS" },
-	}) do
-		local sp = s[1]
-		for _, sx in ipairs({ -1, 1 }) do
-			part("SignPost", Vector3.new(0.5, 6, 0.5), Color3.fromRGB(90, 60, 35), sp + Vector3.new(sx * 7, BEACH_TOP_Y + 3, 0), props, Enum.Material.Wood)
-		end
-		signBoard(props, sp + Vector3.new(0, BEACH_TOP_Y + 7, 0), s[2], Color3.fromRGB(255, 220, 80), Vector3.new(16, 4, 0.6))
-	end
+	-- v4: the two free-standing MARKET / FRESH BRAINROTS sign posts are
+	-- GONE — they stood in the middle of the spawn sightline and their
+	-- AlwaysOnTop boards were the centre of the v3.6 jumble.
 
 	-- v3.4: tall swaying trees at the map edges, clear of the conveyor,
 	-- bases, buildings and spawn pads (the water bands hug Z ±173..243 and
@@ -1442,16 +1504,8 @@ function WorldBuilder.build()
 		local flag = part("Flag", Vector3.new(3, 2, 0.15), flagColors[((fi - 1) % #flagColors) + 1], spot + Vector3.new(1.6, BEACH_TOP_Y + 11, 0), decor2, Enum.Material.Fabric, false)
 		table.insert(waveFlags, { part = flag, base = flag.CFrame, phase = fi * 1.7 })
 	end
-	for _, s in ipairs({
-		{ Vector3.new(0, 0, 168), "SOUTH MARKET" },
-		{ Vector3.new(185, 0, -140), "LIGHTHOUSE POINT" },
-	}) do
-		local sp = s[1]
-		for _, sx in ipairs({ -1, 1 }) do
-			part("SignPost", Vector3.new(0.5, 6, 0.5), Color3.fromRGB(90, 60, 35), sp + Vector3.new(sx * 7, BEACH_TOP_Y + 3, 0), decor2, Enum.Material.Wood)
-		end
-		signBoard(decor2, sp + Vector3.new(0, BEACH_TOP_Y + 7, 0), s[2], Color3.fromRGB(255, 220, 80), Vector3.new(16, 4, 0.6))
-	end
+	-- v4: the SOUTH MARKET / LIGHTHOUSE POINT free-standing signs are
+	-- GONE too — same reason: big AlwaysOnTop boards in the sightline.
 
 	-- ONE animation loop for the whole bay (v3.4): tall trees lean and
 	-- sway, ground animals wander in small circles with a gentle bob, and

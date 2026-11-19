@@ -9,11 +9,69 @@ local BrainrotFactory = {}
 
 -- Characters are built big: MODEL_SCALE 2.0 makes the ~5.7-stud character
 -- ~11.4 studs tall, so they read as big creatures next to the player (like
--- the Rot Ranch animals). The model pivot is the Body centre, which sits
--- 2.5 studs above the feet before scaling, so callers must place the pivot
--- PIVOT_ABOVE_FEET above the surface they stand on.
+-- the Rot Ranch animals).
+-- PIVOT (v4): the model pivot is the Body centre, nominally 2.5 studs above
+-- the feet before scaling (PIVOT_ABOVE_FEET = 5.0 after scaling) — but that
+-- constant was WRONG in practice (v3.6 screenshot: only floating labels
+-- visible, bodies sunk/invisible). The constant trusts ScaleTo's pivot
+-- semantics and the hand-measured leg bottom; both can drift. So no caller
+-- may trust the constant any more: groundOffset(model) MEASURES the real
+-- distance from the pivot to the lowest BasePart bottom with
+-- GetBoundingBox() on the live, scaled model, and placeOnSurface() places
+-- the model, re-measures, and corrects the Y until the lowest point sits
+-- exactly on the surface (within 0.05 studs). placeOnSurface is the only
+-- correct way to stand a brainrot on a surface; PIVOT_ABOVE_FEET is kept
+-- only as a first-guess seed and a fallback.
 BrainrotFactory.MODEL_SCALE = 2.0
 BrainrotFactory.PIVOT_ABOVE_FEET = 2.5 * BrainrotFactory.MODEL_SCALE
+
+-- Measured distance from the model's pivot down to its lowest part bottom,
+-- on the live (already scaled) model. GetBoundingBox covers every BasePart
+-- in the model (BillboardGuis are not parts, so the label never pollutes
+-- the measurement); the lowest point is the feet (legs bottom) unless an
+-- accessory hangs lower, in which case that accessory IS the lowest point
+-- and this still returns the truth.
+function BrainrotFactory.groundOffset(model)
+	local cf, size = model:GetBoundingBox()
+	local bottom = cf.Position.Y - size.Y / 2
+	return model:GetPivot().Position.Y - bottom
+end
+
+-- Stand `model` on `surfaceY` at (x, z), facing `yaw` (default 0). Places
+-- at the constant seed, measures the real bottom, then shifts by the exact
+-- error so the lowest point lands on the surface. Returns the measured
+-- ground offset, which callers should store and reuse for every later
+-- PivotTo of the same model (walk bob, idle bob) instead of re-deriving it.
+function BrainrotFactory.placeOnSurface(model, surfaceY, x, z, yaw)
+	yaw = yaw or 0
+	model:PivotTo(CFrame.new(x, surfaceY + BrainrotFactory.PIVOT_ABOVE_FEET, z) * CFrame.Angles(0, yaw, 0))
+	local offset = BrainrotFactory.groundOffset(model)
+	local cf, size = model:GetBoundingBox()
+	local bottom = cf.Position.Y - size.Y / 2
+	local err = surfaceY - bottom
+	if math.abs(err) > 0.001 then
+		model:PivotTo(model:GetPivot() + Vector3.new(0, err, 0))
+	end
+	-- Verify the correction landed: re-measure and warn loudly if not.
+	local cf2, size2 = model:GetBoundingBox()
+	local bottom2 = cf2.Position.Y - size2.Y / 2
+	if math.abs(bottom2 - surfaceY) > 0.05 then
+		warn("BrainrotFactory.placeOnSurface: " .. model.Name .. " bottom " .. tostring(bottom2) .. " vs surface " .. tostring(surfaceY))
+	end
+	return offset
+end
+
+-- Stagger the floating label height so neighbouring brainrots' labels
+-- never stack on one screen line: slot/walker index mod 3 lifts the label
+-- by 0 / 1.2 / 2.4 studs. Call after buildBrainrotModel, from the spawner
+-- (walker id) or the slotter (slot index).
+function BrainrotFactory.staggerLabel(model, index)
+	local billboard = model:FindFirstChild("Label", true)
+	if billboard and billboard:IsA("BillboardGui") then
+		local step = (index or 0) % 3
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.2 + step * 1.2, 0)
+	end
+end
 
 -- Per-mutation tint overrides. Normal keeps the character's own colours.
 -- Shadow and Lava also switch the body to Neon so they glow on the conveyor.
@@ -231,10 +289,15 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 	end
 
 	-- Floating label above the head: name, rarity (+ mutation), $/sec.
+	-- v4: SMALL — v3.6 used a 260x132px AlwaysOnTop billboard, so a whole
+	-- conveyor of labels merged into one unreadable jumble that dwarfed
+	-- the bodies underneath. This one is 96x40px, sits just 3.2 studs
+	-- above the head, and staggerLabel() (called by the spawner/slotter)
+	-- lifts neighbours by 0/1.2/2.4 studs so labels never stack.
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
-	billboard.Size = UDim2.new(0, 130, 0, 66)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.8, 0)
+	billboard.Size = UDim2.new(0, 96, 0, 40)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Parent = head
 
@@ -270,13 +333,12 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 	model:SetAttribute("State", "walking")
 
 	-- Scale the whole character up around its pivot (the Body centre, so
-	-- the pivot stays put and the feet drop to -PIVOT_ABOVE_FEET below it).
+	-- the pivot stays put and the feet drop to -PIVOT_ABOVE_FEET below it
+	-- in theory — callers must NOT trust that; see groundOffset above).
 	-- The label's Size and StudsOffsetWorldSpace are GUI properties that
-	-- ScaleTo does not touch, so scale them by hand to keep the name
-	-- floating above the bigger head, in proportion.
+	-- ScaleTo does not touch, so keep them at the small v4 values set
+	-- above: do NOT scale the billboard up with the body.
 	model:ScaleTo(BrainrotFactory.MODEL_SCALE)
-	billboard.Size = UDim2.new(0, 130 * BrainrotFactory.MODEL_SCALE, 0, 66 * BrainrotFactory.MODEL_SCALE)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.8 * BrainrotFactory.MODEL_SCALE, 0)
 
 	return model
 end

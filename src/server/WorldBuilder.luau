@@ -35,6 +35,25 @@
 -- paths; the sea gets foam, the beach dunes and grass tufts; lighting is
 -- warmer with bloom/sun-rays. Game loop, economy and the v4 measured
 -- pivot (placeOnSurface) are untouched.
+-- v6 DENSE REAL WORLD (user: still sunk + still lots of empty space —
+-- make it like the real world, as cool as possible): (1) sinking — the
+-- last absolute-Y placements are fixed at the source (palmTree and
+-- marketStall now add BEACH_TOP_Y; arch posts/cap/sign and conveyor
+-- lamps too), bases become real raised platforms (deck top Y=2, stone
+-- skirt, entrance step) and the lighthouse is rebuilt as a tapered box
+-- tower with NO cylinder rotations, so it stands perfectly straight;
+-- (2) density — five new districts fill the whole 512x512 map (east
+-- residential with park + pond, west farm with windmill + crop fields,
+-- south beach resort, north promenade, three forest groves), plus a
+-- marble statue, beach towels, a sandcastle, boulders, bushes and
+-- flowers; (3) animals — nine new species (cat, rabbit, fox, deer,
+-- frog, turtle, crab, seagull, fish) with per-species bob (rabbits and
+-- frogs hop), fish swimming just under the sea with wagging tails and a
+-- spinning windmill rotor; (4) textures — Cobblestone paths, Brick
+-- windmill/well, Marble statue, Sand sandcastle, Fabric towels/umbrellas,
+-- WoodPlanks boardwalks. Labels stagger 5 steps x 1.8 studs with smaller
+-- billboards so they stop jumbling. Game loop, economy and the v4
+-- measured pivot are untouched.
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
@@ -124,6 +143,8 @@ local function signBoard(parent, position, text, textColor, boardSize)
 end
 
 local function palmTree(parent, spot, index)
+	-- v6: sit the whole palm on the sand top (BEACH_TOP_Y), not Y=0.
+	spot = spot + Vector3.new(0, BEACH_TOP_Y, 0)
 	local trunk = Instance.new("Part")
 	trunk.Name = "PalmTrunk" .. index
 	trunk.Shape = Enum.PartType.Cylinder
@@ -169,6 +190,8 @@ local function palmTree(parent, spot, index)
 end
 
 local function marketStall(parent, position, stripeA, stripeB, index)
+	-- v6: sit the whole stall on the sand top (BEACH_TOP_Y), not Y=0.
+	position = position + Vector3.new(0, BEACH_TOP_Y, 0)
 	local stall = Instance.new("Folder")
 	stall.Name = "Stall" .. index
 	stall.Parent = parent
@@ -959,6 +982,266 @@ local function buildBoat()
 	return model, 1.25
 end
 
+-- v6: more live animals. Same contract as the v3.4 builders: return the
+-- model (feet at model Y 0) plus the PrimaryPart's Y (pivotY), so the
+-- wander loop can stand them on the sand and bob them. A few are hoppers
+-- (rabbit, frog) — the loop reads an optional per-animal bob amplitude.
+local function buildCat()
+	local model = Instance.new("Model")
+	model.Name = "Cat"
+	local orange = Color3.fromRGB(230, 150, 70)
+	local cream = Color3.fromRGB(250, 235, 210)
+	local body = animalPart("Body", Vector3.new(1.8, 1.2, 2.6), orange, Vector3.new(0, 1.4, 0), model)
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(1.4, 1.3, 1.4), orange, Vector3.new(0, 2.3, 1.5), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		local ear = animalPart("Ear", Vector3.new(0.5, 0.7, 0.3), orange, Vector3.new(sx * 0.5, 3.1, 1.5), model)
+		ear.CFrame = CFrame.new(ear.Position) * CFrame.Angles(0, 0, sx * -0.25)
+		animalPart("Eye", Vector3.new(0.25, 0.3, 0.12), Color3.fromRGB(30, 180, 90), Vector3.new(sx * 0.35, 2.4, 2.22), model)
+		animalCylinder("Leg", 0.35, 0.9, orange, Vector3.new(sx * 0.6, 0.45, 0.9), model)
+		animalCylinder("Leg", 0.35, 0.9, orange, Vector3.new(sx * 0.6, 0.45, -0.9), model)
+	end
+	animalPart("Nose", Vector3.new(0.3, 0.2, 0.15), Color3.fromRGB(220, 120, 140), Vector3.new(0, 2.2, 2.22), model)
+	animalPart("Chest", Vector3.new(1.2, 0.8, 0.2), cream, Vector3.new(0, 1.3, 1.32), model)
+	local tail = animalPart("Tail", Vector3.new(0.3, 1.6, 0.3), orange, Vector3.new(0, 1.8, -1.5), model)
+	tail.CFrame = CFrame.new(tail.Position) * CFrame.Angles(math.rad(-35), 0, 0)
+	return model, 1.4
+end
+
+local function buildRabbit()
+	local model = Instance.new("Model")
+	model.Name = "Rabbit"
+	local white = Color3.fromRGB(245, 245, 245)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(1.6, 1.6, 1.6)
+	body.Color = white
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 1.2, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	do
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Shape = Enum.PartType.Ball
+		head.Size = Vector3.new(1.0, 1.0, 1.0)
+		head.Color = white
+		head.Anchored = true
+		head.CanCollide = false
+		head.Position = Vector3.new(0, 2.2, 0.6)
+		head.Parent = model
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		local ear = animalPart("Ear", Vector3.new(0.35, 1.4, 0.2), white, Vector3.new(sx * 0.3, 3.2, 0.6), model)
+		ear.CFrame = CFrame.new(ear.Position) * CFrame.Angles(0, 0, sx * -0.12)
+		animalPart("Eye", Vector3.new(0.2, 0.25, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.3, 2.3, 1.08), model)
+		animalCylinder("Leg", 0.25, 0.8, white, Vector3.new(sx * 0.5, 0.4, 0.5), model)
+	end
+	animalPart("Nose", Vector3.new(0.25, 0.2, 0.15), Color3.fromRGB(255, 150, 180), Vector3.new(0, 2.1, 1.12), model)
+	local tail = Instance.new("Part")
+	tail.Name = "Tail"
+	tail.Shape = Enum.PartType.Ball
+	tail.Size = Vector3.new(0.6, 0.6, 0.6)
+	tail.Color = white
+	tail.Anchored = true
+	tail.CanCollide = false
+	tail.Position = Vector3.new(0, 1.2, -0.9)
+	tail.Parent = model
+	return model, 1.2
+end
+
+local function buildFox()
+	local model = Instance.new("Model")
+	model.Name = "Fox"
+	local orange = Color3.fromRGB(220, 110, 45)
+	local cream = Color3.fromRGB(250, 240, 220)
+	local body = animalPart("Body", Vector3.new(2.0, 1.4, 3.0), orange, Vector3.new(0, 1.6, 0), model)
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(1.4, 1.4, 1.4), orange, Vector3.new(0, 2.5, 1.7), model)
+	animalPart("Snout", Vector3.new(0.9, 0.6, 0.9), cream, Vector3.new(0, 2.3, 2.5), model)
+	animalPart("Nose", Vector3.new(0.4, 0.3, 0.2), Color3.fromRGB(30, 30, 30), Vector3.new(0, 2.4, 2.95), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		local ear = animalPart("Ear", Vector3.new(0.5, 0.9, 0.3), orange, Vector3.new(sx * 0.5, 3.4, 1.7), model)
+		ear.CFrame = CFrame.new(ear.Position) * CFrame.Angles(0, 0, sx * -0.2)
+		animalPart("Eye", Vector3.new(0.25, 0.3, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.4, 2.6, 2.42), model)
+		animalCylinder("Leg", 0.4, 1.1, Color3.fromRGB(60, 40, 25), Vector3.new(sx * 0.65, 0.55, 1.0), model)
+		animalCylinder("Leg", 0.4, 1.1, Color3.fromRGB(60, 40, 25), Vector3.new(sx * 0.65, 0.55, -1.0), model)
+	end
+	animalPart("Chest", Vector3.new(1.3, 0.9, 0.2), cream, Vector3.new(0, 1.5, 1.52), model)
+	local tail = Instance.new("Part")
+	tail.Name = "Tail"
+	tail.Shape = Enum.PartType.Ball
+	tail.Size = Vector3.new(1.1, 1.1, 2.2)
+	tail.Color = orange
+	tail.Anchored = true
+	tail.CanCollide = false
+	tail.Position = Vector3.new(0, 1.6, -2.0)
+	tail.Parent = model
+	local tip = Instance.new("Part")
+	tip.Name = "TailTip"
+	tip.Shape = Enum.PartType.Ball
+	tip.Size = Vector3.new(1.0, 1.0, 0.9)
+	tip.Color = cream
+	tip.Anchored = true
+	tip.CanCollide = false
+	tip.Position = Vector3.new(0, 1.6, -3.0)
+	tip.Parent = model
+	return model, 1.6
+end
+
+local function buildDeer()
+	local model = Instance.new("Model")
+	model.Name = "Deer"
+	local brown = Color3.fromRGB(170, 120, 70)
+	local cream = Color3.fromRGB(240, 225, 200)
+	local body = animalPart("Body", Vector3.new(2.2, 1.8, 3.6), brown, Vector3.new(0, 2.2, 0), model)
+	model.PrimaryPart = body
+	local neck = animalPart("Neck", Vector3.new(1.2, 2.2, 1.2), brown, Vector3.new(0, 3.6, 1.8), model)
+	neck.CFrame = CFrame.new(neck.Position) * CFrame.Angles(math.rad(-20), 0, 0)
+	animalPart("Head", Vector3.new(1.3, 1.4, 2.0), brown, Vector3.new(0, 4.7, 2.5), model)
+	animalPart("Snout", Vector3.new(0.9, 0.7, 0.7), cream, Vector3.new(0, 4.5, 3.5), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.25, 0.3, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.45, 4.9, 3.45), model)
+		animalPart("Ear", Vector3.new(0.35, 0.8, 0.3), brown, Vector3.new(sx * 0.6, 5.3, 2.4), model)
+		-- Antlers: a vertical tine plus a forward branch.
+		animalPart("Antler", Vector3.new(0.22, 1.6, 0.22), Color3.fromRGB(120, 90, 55), Vector3.new(sx * 0.4, 6.0, 2.3), model)
+		local branch = animalPart("AntlerBranch", Vector3.new(0.18, 1.0, 0.18), Color3.fromRGB(120, 90, 55), Vector3.new(sx * 0.7, 6.1, 2.5), model)
+		branch.CFrame = CFrame.new(branch.Position) * CFrame.Angles(0, 0, sx * -0.6)
+		animalCylinder("Leg", 0.4, 1.9, brown, Vector3.new(sx * 0.7, 0.95, 1.3), model)
+		animalCylinder("Leg", 0.4, 1.9, brown, Vector3.new(sx * 0.7, 0.95, -1.3), model)
+		animalPart("Hoof", Vector3.new(0.45, 0.25, 0.45), Color3.fromRGB(50, 40, 30), Vector3.new(sx * 0.7, 0.12, 1.3), model)
+		animalPart("Hoof", Vector3.new(0.45, 0.25, 0.45), Color3.fromRGB(50, 40, 30), Vector3.new(sx * 0.7, 0.12, -1.3), model)
+	end
+	animalPart("Belly", Vector3.new(1.6, 0.9, 2.6), cream, Vector3.new(0, 1.6, 0), model)
+	animalPart("Tail", Vector3.new(0.4, 0.6, 0.4), cream, Vector3.new(0, 2.4, -1.9), model)
+	return model, 2.2
+end
+
+local function buildFrog()
+	local model = Instance.new("Model")
+	model.Name = "Frog"
+	local green = Color3.fromRGB(80, 200, 90)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(1.8, 1.2, 1.8)
+	body.Color = green
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 0.9, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	for _, sx in ipairs({ -1, 1 }) do
+		local eye = Instance.new("Part")
+		eye.Name = "Eye"
+		eye.Shape = Enum.PartType.Ball
+		eye.Size = Vector3.new(0.5, 0.5, 0.5)
+		eye.Color = green
+		eye.Anchored = true
+		eye.CanCollide = false
+		eye.Position = Vector3.new(sx * 0.45, 1.6, 0.5)
+		eye.Parent = model
+		animalPart("Pupil", Vector3.new(0.25, 0.25, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.45, 1.65, 0.75), model)
+		animalCylinder("BackLeg", 0.4, 1.0, green, Vector3.new(sx * 0.7, 0.5, -0.4), model)
+		animalCylinder("FrontLeg", 0.3, 0.7, green, Vector3.new(sx * 0.5, 0.35, 0.7), model)
+	end
+	animalPart("Belly", Vector3.new(1.2, 0.6, 1.2), Color3.fromRGB(220, 245, 190), Vector3.new(0, 0.6, 0.3), model)
+	return model, 0.9
+end
+
+local function buildTurtle()
+	local model = Instance.new("Model")
+	model.Name = "Turtle"
+	local shell = Color3.fromRGB(70, 130, 70)
+	local skin = Color3.fromRGB(140, 180, 90)
+	local body = Instance.new("Part")
+	body.Name = "Shell"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(2.2, 1.4, 2.6)
+	body.Color = shell
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 1.0, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	animalPart("Head", Vector3.new(0.9, 0.8, 0.9), skin, Vector3.new(0, 1.3, 1.5), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.2, 0.2, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.25, 1.45, 1.92), model)
+		animalPart("Flipper", Vector3.new(0.7, 0.35, 1.0), skin, Vector3.new(sx * 1.1, 0.4, 0.9), model)
+		animalPart("Flipper", Vector3.new(0.7, 0.35, 1.0), skin, Vector3.new(sx * 1.1, 0.4, -0.9), model)
+	end
+	animalPart("Tail", Vector3.new(0.25, 0.25, 0.6), skin, Vector3.new(0, 0.8, -1.4), model)
+	return model, 1.0
+end
+
+local function buildCrab()
+	local model = Instance.new("Model")
+	model.Name = "Crab"
+	local red = Color3.fromRGB(220, 90, 60)
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(2.0, 0.9, 1.4)
+	body.Color = red
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 0.7, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	for _, sx in ipairs({ -1, 1 }) do
+		local claw = Instance.new("Part")
+		claw.Name = "Claw"
+		claw.Shape = Enum.PartType.Ball
+		claw.Size = Vector3.new(0.9, 0.9, 0.9)
+		claw.Color = red
+		claw.Anchored = true
+		claw.CanCollide = false
+		claw.Position = Vector3.new(sx * 1.3, 0.7, 0.7)
+		claw.Parent = model
+		local stalk = animalPart("EyeStalk", Vector3.new(0.15, 0.7, 0.15), red, Vector3.new(sx * 0.4, 1.3, 0.5), model)
+		stalk.CFrame = CFrame.new(stalk.Position) * CFrame.Angles(0, 0, sx * -0.2)
+		animalPart("Eye", Vector3.new(0.3, 0.3, 0.3), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.45, 1.65, 0.5), model)
+		for _, lz in ipairs({ -0.4, 0, 0.4 }) do
+			animalCylinder("Leg", 0.18, 0.9, red, Vector3.new(sx * 1.0, 0.45, lz), model)
+		end
+	end
+	return model, 0.7
+end
+
+-- A fish that swims in the sea bands (and the park pond): flattened ball
+-- body, tail fin that wiggles, dorsal fin, eyes. Returns the model, the
+-- pivot Y (0 — body centre is the origin) and the tail flap data, in the
+-- same shape as buildBird's wings, so the swim loop can wiggle it.
+local function buildFish(color)
+	local model = Instance.new("Model")
+	model.Name = "Fish"
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(1.1, 0.9, 2.2)
+	body.Color = color
+	body.Anchored = true
+	body.CanCollide = false
+	body.Position = Vector3.new(0, 0, 0)
+	body.Parent = model
+	model.PrimaryPart = body
+	local tail = animalPart("Tail", Vector3.new(0.15, 1.0, 0.9), color, Vector3.new(0, 0, -1.4), model)
+	-- Low dorsal ridge (not a tall fin) so the fish can swim just under
+	-- the surface without a fin sticking way out of the water.
+	animalPart("Dorsal", Vector3.new(0.12, 0.35, 0.9), Color3.fromRGB(60, 90, 120), Vector3.new(0, 0.35, -0.2), model)
+	for _, sx in ipairs({ -1, 1 }) do
+		animalPart("Eye", Vector3.new(0.2, 0.2, 0.12), Color3.fromRGB(20, 20, 20), Vector3.new(sx * 0.3, 0.15, 0.95), model)
+		animalPart("Fin", Vector3.new(0.12, 0.5, 0.7), color, Vector3.new(sx * 0.55, -0.2, 0.1), model)
+	end
+	return model, 0, {
+		part = tail,
+		attach = Vector3.new(0, 0, -1.0),
+		centre = Vector3.new(0, 0, -1.4),
+	}
+end
+
 function WorldBuilder.build()
 	local world = Instance.new("Folder")
 	world.Name = "World"
@@ -1162,10 +1445,10 @@ function WorldBuilder.build()
 	arch.Name = "Arch"
 	arch.Parent = world
 	for _, side in ipairs({ -1, 1 }) do
-		part("ArchPost", Vector3.new(1.5, 13, 1.5), Color3.fromRGB(250, 235, 205), Vector3.new(side * 8, 6.5, -148), arch)
-		part("ArchCap", Vector3.new(2.2, 0.8, 2.2), Color3.fromRGB(198, 102, 62), Vector3.new(side * 8, 13.4, -148), arch, Enum.Material.SmoothPlastic, false)
+		part("ArchPost", Vector3.new(1.5, 13, 1.5), Color3.fromRGB(250, 235, 205), Vector3.new(side * 8, BEACH_TOP_Y + 6.5, -148), arch)
+		part("ArchCap", Vector3.new(2.2, 0.8, 2.2), Color3.fromRGB(198, 102, 62), Vector3.new(side * 8, BEACH_TOP_Y + 13.4, -148), arch, Enum.Material.SmoothPlastic, false)
 	end
-	signBoard(arch, Vector3.new(0, 14, -148), "BRAINROT BAY", Color3.fromRGB(255, 220, 80), Vector3.new(16, 2.5, 0.6))
+	signBoard(arch, Vector3.new(0, BEACH_TOP_Y + 14, -148), "BRAINROT BAY", Color3.fromRGB(255, 220, 80), Vector3.new(16, 2.5, 0.6))
 	-- v5: palms framing the arch — the first thing past the gatehouse.
 	palmTree(world, Vector3.new(-14, 0, -148), 101)
 	palmTree(world, Vector3.new(14, 0, -148), 102)
@@ -1261,13 +1544,18 @@ function WorldBuilder.build()
 	for _, side in ipairs({ -1, 1 }) do
 		for _, z in ipairs(BASE_Z) do
 			index += 1
-			local center = Vector3.new(side * 48, 1, z)
+			-- v6: real raised platform — the deck top is now Y=2 (was 1),
+			-- so the platform reads as a raised deck, not a thin slab.
+			-- Everything on the base (pads, walls, sign, lock field) is
+			-- positioned relative to `center`, so it all rises together;
+			-- services read State.bases, so gameplay follows automatically.
+			local center = Vector3.new(side * 48, 2, z)
 			local color = BASE_COLORS[index]
 			local baseFolder = Instance.new("Folder")
 			baseFolder.Name = "Base" .. index
 			baseFolder.Parent = basesFolder
 
-			part("Platform", Vector3.new(30, 1, 30), color, center + Vector3.new(0, -0.5, 0), baseFolder)
+			part("Platform", Vector3.new(30, 2, 30), color, center + Vector3.new(0, -1, 0), baseFolder)
 			-- v5: warm cream trim framing the platform edge.
 			for _, sx in ipairs({ -1, 1 }) do
 				part("PlatformTrim", Vector3.new(1, 0.2, 30), Color3.fromRGB(250, 235, 205), center + Vector3.new(sx * 14.5, 0.05, 0), baseFolder, Enum.Material.SmoothPlastic, false)
@@ -1275,6 +1563,12 @@ function WorldBuilder.build()
 			for _, sz in ipairs({ -1, 1 }) do
 				part("PlatformTrim", Vector3.new(30, 0.2, 1), Color3.fromRGB(250, 235, 205), center + Vector3.new(0, 0.05, sz * 14.5), baseFolder, Enum.Material.SmoothPlastic, false)
 			end
+			-- v6: stone foundation skirt at the deck foot + an entrance
+			-- step on the conveyor-facing edge (conveyor top Y=1, deck
+			-- top Y=2, so one step at Y=1.5 makes the climb two easy
+			-- half-stud rises instead of one full-stud wall).
+			part("PlatformSkirt", Vector3.new(31, 0.6, 31), Color3.fromRGB(140, 130, 115), center + Vector3.new(0, -1.7, 0), baseFolder, Enum.Material.Slate, false)
+			part("BaseStep", Vector3.new(4, 1, 8), Color3.fromRGB(200, 188, 165), center + Vector3.new(side * -15, -1, 0), baseFolder, Enum.Material.Slate)
 			part("BackWall", Vector3.new(1, 6, 30), Color3.fromRGB(80, 58, 42), center + Vector3.new(side * 14.5, 3, 0), baseFolder, Enum.Material.Wood)
 			-- 18 slot pads (3 rows x 6): 12 unlocked at start, +2 per
 			-- capacity level up to 20. Pads past the current cap are just
@@ -1338,8 +1632,8 @@ function WorldBuilder.build()
 
 	for _, z in ipairs({ -100, -40, 20, 80, 140 }) do
 		for _, side in ipairs({ -1, 1 }) do
-			part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), Vector3.new(side * 10, 3.5, z), decor)
-			part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), Vector3.new(side * 10, 7.4, z), decor, Enum.Material.Neon, false)
+			part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), Vector3.new(side * 10, BEACH_TOP_Y + 3.5, z), decor)
+			part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), Vector3.new(side * 10, BEACH_TOP_Y + 7.4, z), decor, Enum.Material.Neon, false)
 		end
 	end
 	-- Bunting: little coloured flags strung between the lamp tops.
@@ -1626,39 +1920,32 @@ function WorldBuilder.build()
 	-- — on the beach just south of the north water band (Z -163..), clear
 	-- of the house at (85, -170). White tower with red stripes, a glass
 	-- lamp room with a glowing bulb, a red dome, and two rotating beams.
+	-- v6: rebuilt as a TAPERED BOX tower — plain Positions, no cylinder
+	-- rotations at all, so the tower stands perfectly straight up (the
+	-- old cylinder tower read as leaning ~30 degrees in the live game).
+	-- Stacked boxes narrow toward the top, like a real lighthouse.
 	local lhBase = Vector3.new(200, BEACH_TOP_Y, -155)
-	part("LighthouseBase", Vector3.new(12, 2, 12), Color3.fromRGB(120, 120, 130), lhBase + Vector3.new(0, 1, 0), world)
-	local tower = Instance.new("Part")
-	tower.Name = "LighthouseTower"
-	tower.Shape = Enum.PartType.Cylinder
-	tower.Size = Vector3.new(30, 8, 8)
-	tower.Color = Color3.fromRGB(255, 255, 255)
-	tower.Anchored = true
-	tower.CanCollide = true
-	tower.CFrame = CFrame.new(lhBase + Vector3.new(0, 17, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	tower.Parent = world
-	for _, sy in ipairs({ 10, 22 }) do
-		local stripe = Instance.new("Part")
-		stripe.Name = "LighthouseStripe"
-		stripe.Shape = Enum.PartType.Cylinder
-		stripe.Size = Vector3.new(3, 8.4, 8.4)
-		stripe.Color = Color3.fromRGB(220, 60, 60)
-		stripe.Anchored = true
-		stripe.CanCollide = false
-		stripe.CFrame = CFrame.new(lhBase + Vector3.new(0, sy, 0)) * CFrame.Angles(0, 0, math.rad(90))
-		stripe.Parent = world
+	part("LighthouseBase", Vector3.new(14, 2, 14), Color3.fromRGB(120, 120, 130), lhBase + Vector3.new(0, 1, 0), world, Enum.Material.Cobblestone)
+	-- Tower sections: (size, centre-Y above lhBase, colour). Each box is
+	-- placed by plain Position — no CFrame rotation, so no lean is possible.
+	for _, sec in ipairs({
+		{ Vector3.new(9, 12, 9), 8.2, Color3.fromRGB(255, 255, 255) },
+		{ Vector3.new(8.4, 4, 8.4), 16.2, Color3.fromRGB(220, 60, 60) },
+		{ Vector3.new(7.8, 10, 7.8), 23.2, Color3.fromRGB(255, 255, 255) },
+		{ Vector3.new(7.2, 4, 7.2), 30.2, Color3.fromRGB(220, 60, 60) },
+	}) do
+		part("LighthouseTower", sec[1], sec[3], lhBase + Vector3.new(0, sec[2], 0), world, Enum.Material.SmoothPlastic)
 	end
-	part("LighthouseGallery", Vector3.new(10, 1, 10), Color3.fromRGB(60, 60, 70), lhBase + Vector3.new(0, 32.5, 0), world)
-	local lampRoom = Instance.new("Part")
-	lampRoom.Name = "LampRoom"
-	lampRoom.Shape = Enum.PartType.Cylinder
-	lampRoom.Size = Vector3.new(5, 6, 6)
-	lampRoom.Material = Enum.Material.Glass
-	lampRoom.Color = Color3.fromRGB(180, 220, 255)
-	lampRoom.Anchored = true
-	lampRoom.CanCollide = false
-	lampRoom.CFrame = CFrame.new(lhBase + Vector3.new(0, 35.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	lampRoom.Parent = world
+	-- Door at the tower foot (faces the town, -X) + small windows up the
+	-- white sections so the tower reads as a real building, not a pole.
+	part("LighthouseDoor", Vector3.new(0.4, 5, 2.4), Color3.fromRGB(90, 60, 35), lhBase + Vector3.new(-4.6, 4.5, 0), world, Enum.Material.Wood)
+	for _, wy in ipairs({ 11, 20, 26 }) do
+		part("LighthouseWindow", Vector3.new(0.3, 1.6, 1.6), Color3.fromRGB(150, 210, 255), lhBase + Vector3.new(-4.3, wy, 0), world, Enum.Material.Glass, false)
+	end
+	part("LighthouseGallery", Vector3.new(10, 1, 10), Color3.fromRGB(60, 60, 70), lhBase + Vector3.new(0, 32.7, 0), world)
+	-- Glass lamp room as a plain box (no cylinder rotation), glowing bulb,
+	-- and a red dome cap — all plain Positions, all straight up.
+	part("LampRoom", Vector3.new(6, 5, 6), Color3.fromRGB(180, 220, 255), lhBase + Vector3.new(0, 35.7, 0), world, Enum.Material.Glass, false)
 	local lampBulb = Instance.new("Part")
 	lampBulb.Name = "LampBulb"
 	lampBulb.Shape = Enum.PartType.Ball
@@ -1667,7 +1954,7 @@ function WorldBuilder.build()
 	lampBulb.Color = Color3.fromRGB(255, 240, 160)
 	lampBulb.Anchored = true
 	lampBulb.CanCollide = false
-	lampBulb.Position = lhBase + Vector3.new(0, 35.5, 0)
+	lampBulb.Position = lhBase + Vector3.new(0, 35.7, 0)
 	lampBulb.Parent = world
 	local dome = Instance.new("Part")
 	dome.Name = "LighthouseDome"
@@ -1676,10 +1963,10 @@ function WorldBuilder.build()
 	dome.Color = Color3.fromRGB(220, 60, 60)
 	dome.Anchored = true
 	dome.CanCollide = false
-	dome.Position = lhBase + Vector3.new(0, 39.5, 0)
+	dome.Position = lhBase + Vector3.new(0, 39.7, 0)
 	dome.Parent = world
 	-- Two rotating light beams, spun by the animation loop below.
-	local beamPivot = lhBase + Vector3.new(0, 35.5, 0)
+	local beamPivot = lhBase + Vector3.new(0, 35.7, 0)
 	local beams = {}
 	for _, dir in ipairs({ 1, -1 }) do
 		local beam = part("LightBeam", Vector3.new(26, 1, 1), Color3.fromRGB(255, 240, 160), beamPivot + Vector3.new(dir * 13, 0, 0), world, Enum.Material.Neon, false)
@@ -1780,6 +2067,459 @@ function WorldBuilder.build()
 	-- v4: the SOUTH MARKET / LIGHTHOUSE POINT free-standing signs are
 	-- GONE too — same reason: big AlwaysOnTop boards in the sightline.
 
+	-- v6: FILL THE MAP — dense real-world districts. The v5 world had
+	-- the town, conveyor and bases clustered in the middle-back and most
+	-- of the 512x512 map was empty brown ground. These districts spread
+	-- buildings, trees, props, paths and animals across the WHOLE map so
+	-- no big empty area remains: east residential, west farm, south beach
+	-- resort, north promenade, and three forest groves. Every placement
+	-- uses BEACH_TOP_Y as its ground reference (no more sunk props) and
+	-- stays clear of the conveyor, the bases, the town and the water.
+	local districts = Instance.new("Folder")
+	districts.Name = "Districts"
+	districts.Parent = world
+
+	-- v6 structure helpers, local to this section.
+	local function cropField(parent, center, rows, cols, cropColor, fruitColor)
+		-- A tilled soil bed with rows of crop plants and fruit.
+		part("CropSoil", Vector3.new(cols * 2.5 + 2, 0.6, rows * 3 + 2), Color3.fromRGB(95, 65, 40), center + Vector3.new(0, BEACH_TOP_Y + 0.3, 0), parent, Enum.Material.Ground)
+		for r = 1, rows do
+			local rz = center.Z - (rows - 1) * 1.5 + (r - 1) * 3
+			for c = 1, cols do
+				local cx = center.X - (cols - 1) * 1.25 + (c - 1) * 2.5
+				part("CropPlant", Vector3.new(0.8, 1.6, 0.8), cropColor, Vector3.new(cx, BEACH_TOP_Y + 1.4, rz), parent, Enum.Material.Grass, false)
+				part("CropFruit", Vector3.new(0.5, 0.5, 0.5), fruitColor, Vector3.new(cx, BEACH_TOP_Y + 2.2, rz), parent, Enum.Material.SmoothPlastic, false)
+			end
+		end
+	end
+
+	local function windmill(parent, pos)
+		-- Tapered stone-and-timber tower (plain boxes, no rotation) plus
+		-- a 4-blade rotor built as a model around the origin, so the
+		-- animation loop can spin it with a single PivotTo. Returns the
+		-- rotor {model, hub} for the loop.
+		local tower = Instance.new("Folder")
+		tower.Name = "Windmill"
+		tower.Parent = parent
+		part("WindmillBase", Vector3.new(12, 2, 12), Color3.fromRGB(140, 130, 115), pos + Vector3.new(0, BEACH_TOP_Y + 1, 0), tower, Enum.Material.Slate)
+		part("WindmillTower", Vector3.new(8, 14, 8), Color3.fromRGB(210, 190, 160), pos + Vector3.new(0, BEACH_TOP_Y + 9, 0), tower, Enum.Material.Brick)
+		part("WindmillTowerTop", Vector3.new(6.5, 6, 6.5), Color3.fromRGB(190, 165, 130), pos + Vector3.new(0, BEACH_TOP_Y + 19, 0), tower, Enum.Material.Brick)
+		part("WindmillRoof", Vector3.new(8, 2, 8), Color3.fromRGB(160, 70, 60), pos + Vector3.new(0, BEACH_TOP_Y + 23, 0), tower, Enum.Material.SmoothPlastic)
+		part("WindmillDoor", Vector3.new(2, 3.5, 0.4), Color3.fromRGB(90, 60, 35), pos + Vector3.new(0, BEACH_TOP_Y + 3.7, 4.1), tower, Enum.Material.Wood)
+		local rotor = Instance.new("Model")
+		rotor.Name = "WindmillRotor"
+		local hub = Instance.new("Part")
+		hub.Name = "RotorHub"
+		hub.Shape = Enum.PartType.Ball
+		hub.Size = Vector3.new(2, 2, 2)
+		hub.Color = Color3.fromRGB(90, 60, 35)
+		hub.Anchored = true
+		hub.CanCollide = false
+		hub.Position = Vector3.new(0, 0, 0)
+		hub.Parent = rotor
+		rotor.PrimaryPart = hub
+		for i = 0, 3 do
+			local ang = i * math.pi / 2
+			local blade = Instance.new("Part")
+			blade.Name = "RotorBlade"
+			blade.Size = Vector3.new(1.2, 8, 0.3)
+			blade.Color = Color3.fromRGB(250, 240, 220)
+			blade.Material = Enum.Material.Fabric
+			blade.Anchored = true
+			blade.CanCollide = false
+			blade.Position = Vector3.new(math.cos(ang) * 5, math.sin(ang) * 5, 0.5)
+			-- Long axis (Y) must point radially: rotate by ang - 90 deg.
+			blade.CFrame = CFrame.new(blade.Position) * CFrame.Angles(0, 0, ang - math.pi / 2)
+			blade.Parent = rotor
+		end
+		rotor.Parent = tower
+		local hubPos = pos + Vector3.new(0, BEACH_TOP_Y + 20, 4.5)
+		rotor:PivotTo(CFrame.new(hubPos))
+		return { model = rotor, hub = hubPos }
+	end
+
+	local function beachUmbrella(parent, pos, canopyColor)
+		-- Pole + a wide fabric canopy (flattened ball) + a deck chair.
+		part("UmbrellaPole", Vector3.new(0.4, 4, 0.4), Color3.fromRGB(120, 100, 80), pos + Vector3.new(0, BEACH_TOP_Y + 2, 0), parent, Enum.Material.Wood)
+		local canopy = Instance.new("Part")
+		canopy.Name = "UmbrellaCanopy"
+		canopy.Shape = Enum.PartType.Ball
+		canopy.Size = Vector3.new(7, 2.5, 7)
+		canopy.Color = canopyColor
+		canopy.Material = Enum.Material.Fabric
+		canopy.Anchored = true
+		canopy.CanCollide = false
+		canopy.Position = pos + Vector3.new(0, BEACH_TOP_Y + 4.2, 0)
+		canopy.Parent = parent
+		part("DeckChair", Vector3.new(2, 0.4, 4), Color3.fromRGB(200, 170, 120), pos + Vector3.new(3.5, BEACH_TOP_Y + 0.4, 1), parent, Enum.Material.Wood)
+		part("DeckChairBack", Vector3.new(2, 1.2, 0.3), Color3.fromRGB(200, 170, 120), pos + Vector3.new(3.5, BEACH_TOP_Y + 0.9, 2.8), parent, Enum.Material.Wood)
+	end
+
+	local function well(parent, pos)
+		-- A stone well: low wall, water inside, posts, a roof, a bucket.
+		part("WellWall", Vector3.new(4, 2, 4), Color3.fromRGB(140, 130, 115), pos + Vector3.new(0, BEACH_TOP_Y + 1, 0), parent, Enum.Material.Brick)
+		part("WellWater", Vector3.new(3, 0.4, 3), Color3.fromRGB(70, 140, 200), pos + Vector3.new(0, BEACH_TOP_Y + 1.8, 0), parent, Enum.Material.Water, false)
+		for _, sx in ipairs({ -1, 1 }) do
+			part("WellPost", Vector3.new(0.5, 3.5, 0.5), Color3.fromRGB(120, 85, 50), pos + Vector3.new(sx * 1.7, BEACH_TOP_Y + 3.7, 0), parent, Enum.Material.Wood)
+		end
+		part("WellRoof", Vector3.new(5.5, 0.6, 5.5), Color3.fromRGB(160, 70, 60), pos + Vector3.new(0, BEACH_TOP_Y + 5.6, 0), parent, Enum.Material.Wood)
+		part("WellBucket", Vector3.new(1, 1, 1), Color3.fromRGB(90, 60, 35), pos + Vector3.new(0, BEACH_TOP_Y + 3, 0), parent, Enum.Material.Wood)
+	end
+
+	local function pond(parent, center, radius)
+		-- A round pond: a flat water ellipsoid, a stone rim, lily pads.
+		local water = Instance.new("Part")
+		water.Name = "PondWater"
+		water.Shape = Enum.PartType.Ball
+		water.Size = Vector3.new(radius * 2, 0.8, radius * 2)
+		water.Color = Color3.fromRGB(70, 140, 200)
+		water.Material = Enum.Material.Water
+		water.Transparency = 0.15
+		water.Anchored = true
+		water.CanCollide = false
+		water.Position = center + Vector3.new(0, BEACH_TOP_Y + 0.2, 0)
+		water.Parent = parent
+		for i = 0, 7 do
+			local ang = i * math.pi / 4
+			part("PondStone", Vector3.new(1.5, 0.8, 1.5), Color3.fromRGB(150, 145, 135), Vector3.new(center.X + math.cos(ang) * (radius + 0.5), BEACH_TOP_Y + 0.4, center.Z + math.sin(ang) * (radius + 0.5)), parent, Enum.Material.Slate)
+		end
+		for _, lp in ipairs({ { -3, -2 }, { 2, 3 }, { 4, -1 } }) do
+			local pad = Instance.new("Part")
+			pad.Name = "LilyPad"
+			pad.Shape = Enum.PartType.Ball
+			pad.Size = Vector3.new(2, 0.3, 2)
+			pad.Color = Color3.fromRGB(60, 160, 80)
+			pad.Material = Enum.Material.Grass
+			pad.Anchored = true
+			pad.CanCollide = false
+			pad.Position = center + Vector3.new(lp[1], BEACH_TOP_Y + 0.65, lp[2])
+			pad.Parent = parent
+		end
+	end
+
+	local function lookoutTower(parent, pos)
+		-- A wooden lifeguard / lookout tower: legs, platform, railing,
+		-- roof. Players can climb it (legs are CanCollide, platform solid).
+		for _, sx in ipairs({ -1, 1 }) do
+			for _, sz in ipairs({ -1, 1 }) do
+				part("LookoutLeg", Vector3.new(0.6, 8, 0.6), Color3.fromRGB(120, 85, 50), pos + Vector3.new(sx * 2.5, BEACH_TOP_Y + 4, sz * 2.5), parent, Enum.Material.Wood)
+			end
+		end
+		part("LookoutPlatform", Vector3.new(7, 0.6, 7), Color3.fromRGB(180, 140, 90), pos + Vector3.new(0, BEACH_TOP_Y + 8.3, 0), parent, Enum.Material.Wood)
+		for _, sz in ipairs({ -1, 1 }) do
+			part("LookoutRail", Vector3.new(7, 1, 0.3), Color3.fromRGB(150, 110, 70), pos + Vector3.new(0, BEACH_TOP_Y + 9.3, sz * 3.3), parent, Enum.Material.Wood)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			part("LookoutRail", Vector3.new(0.3, 1, 7), Color3.fromRGB(150, 110, 70), pos + Vector3.new(sx * 3.3, BEACH_TOP_Y + 9.3, 0), parent, Enum.Material.Wood)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			part("LookoutRoofPost", Vector3.new(0.4, 2, 0.4), Color3.fromRGB(120, 85, 50), pos + Vector3.new(sx * 3, BEACH_TOP_Y + 10.5, 0), parent, Enum.Material.Wood)
+		end
+		part("LookoutRoof", Vector3.new(8, 0.5, 8), Color3.fromRGB(160, 70, 60), pos + Vector3.new(0, BEACH_TOP_Y + 11.5, 0), parent, Enum.Material.Wood)
+	end
+
+	local function boardwalk(parent, x0, x1, z)
+		-- A wooden boardwalk along Z=z from X=x0 to X=x1.
+		local x = x0
+		while x <= x1 do
+			part("BoardwalkPlank", Vector3.new(1.8, 0.3, 6), Color3.fromRGB(170, 130, 85), Vector3.new(x, BEACH_TOP_Y + 0.35, z), parent, Enum.Material.WoodPlanks)
+			x += 2
+		end
+	end
+
+	local function stonePath(parent, x0, z0, x1, z1)
+		-- A stepping-stone path from (x0,z0) to (x1,z1): flat stones
+		-- every 3 studs, weaving slightly for a natural look.
+		local dx = x1 - x0
+		local dz = z1 - z0
+		local len = math.sqrt(dx * dx + dz * dz)
+		local steps = math.max(1, math.floor(len / 3))
+		for i = 0, steps do
+			local f = i / steps
+			part("PathStone", Vector3.new(2.5, 0.3, 2.5), Color3.fromRGB(190, 180, 165), Vector3.new(x0 + dx * f + math.sin(i * 2.1) * 0.6, BEACH_TOP_Y + 0.35, z0 + dz * f + math.cos(i * 1.7) * 0.6), parent, Enum.Material.Cobblestone)
+		end
+	end
+
+	-- EAST RESIDENTIAL (X 120..250, Z -110..110): seven houses on a
+	-- quiet street, a park with a pond, paths and lamps.
+	for i, h in ipairs({
+		{ Vector3.new(130, 0, -70), Color3.fromRGB(250, 220, 180), Color3.fromRGB(180, 80, 60), 1 },
+		{ Vector3.new(175, 0, -35), Color3.fromRGB(220, 235, 250), Color3.fromRGB(70, 110, 160), -1 },
+		{ Vector3.new(215, 0, 5), Color3.fromRGB(250, 235, 200), Color3.fromRGB(120, 90, 60), 1 },
+		{ Vector3.new(145, 0, 45), Color3.fromRGB(235, 215, 190), Color3.fromRGB(90, 140, 90), -1 },
+		{ Vector3.new(185, 0, 85), Color3.fromRGB(250, 220, 180), Color3.fromRGB(180, 80, 60), 1 },
+		{ Vector3.new(225, 0, -60), Color3.fromRGB(220, 235, 250), Color3.fromRGB(70, 110, 160), -1 },
+		{ Vector3.new(160, 0, -105), Color3.fromRGB(235, 215, 190), Color3.fromRGB(120, 90, 60), 1 },
+	}) do
+		house(districts, h[1], h[2], h[3], h[4], 100 + i)
+	end
+	-- Park: grass lawn + pond + benches + lamps, frogs and a turtle live
+	-- here (registered with the animals below).
+	part("ParkLawn", Vector3.new(40, 0.3, 30), Color3.fromRGB(100, 200, 110), Vector3.new(200, BEACH_TOP_Y + 0.3, 120), districts, Enum.Material.Grass)
+	pond(districts, Vector3.new(200, 0, 120), 8)
+	for _, spot in ipairs({ Vector3.new(185, 0, 110), Vector3.new(215, 0, 130) }) do
+		part("ParkBenchSeat", Vector3.new(4, 0.5, 1.5), Color3.fromRGB(150, 100, 55), spot + Vector3.new(0, BEACH_TOP_Y + 1.2, 0), districts, Enum.Material.Wood)
+		part("ParkBenchBack", Vector3.new(4, 1.5, 0.3), Color3.fromRGB(150, 100, 55), spot + Vector3.new(0, BEACH_TOP_Y + 2, -0.7), districts, Enum.Material.Wood)
+	end
+	for _, spot in ipairs({ Vector3.new(185, 0, 130), Vector3.new(215, 0, 110) }) do
+		part("ParkLampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), districts)
+		part("ParkLampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), spot + Vector3.new(0, BEACH_TOP_Y + 7.4, 0), districts, Enum.Material.Neon, false)
+	end
+	stonePath(districts, 120, -20, 200, 115)
+	stonePath(districts, 150, 40, 200, 115)
+	stonePath(districts, 200, 115, 200, 185)
+
+	-- WEST FARM (X -250..-160, Z -120..120): farmhouse, barn, two crop
+	-- fields, a spinning windmill, fences and a well.
+	house(districts, Vector3.new(-200, 0, -60), Color3.fromRGB(250, 220, 180), Color3.fromRGB(180, 80, 60), 1, 200)
+	barn(districts, Vector3.new(-220, 0, 20), Color3.fromRGB(190, 60, 55), Color3.fromRGB(120, 60, 40), 201)
+	cropField(districts, Vector3.new(-190, 0, 60), 3, 6, Color3.fromRGB(90, 190, 80), Color3.fromRGB(255, 140, 60))
+	cropField(districts, Vector3.new(-200, 0, -110), 3, 6, Color3.fromRGB(70, 170, 90), Color3.fromRGB(255, 80, 120))
+	local windmillEntry = windmill(districts, Vector3.new(-170, 0, 110))
+	well(districts, Vector3.new(-175, 0, 0))
+	fenceRun(districts, -180, 48, 72, 300)
+	fenceRun(districts, -200, 48, 72, 301)
+	fenceRun(districts, -185, -122, -98, 302)
+	fenceRun(districts, -215, -122, -98, 303)
+	stonePath(districts, -160, -60, -200, -60)
+	stonePath(districts, -160, 60, -190, 60)
+
+	-- SOUTH BEACH RESORT (Z 180..205, X -200..200): umbrellas, deck
+	-- chairs, a beach bar, market stalls, a lifeguard tower, a boardwalk.
+	for i, ux in ipairs({ -150, -80, 0, 80, 150 }) do
+		local colors = {
+			Color3.fromRGB(255, 90, 90), Color3.fromRGB(90, 160, 255),
+			Color3.fromRGB(255, 220, 80), Color3.fromRGB(120, 220, 130),
+			Color3.fromRGB(255, 150, 200),
+		}
+		beachUmbrella(districts, Vector3.new(ux, 0, 195), colors[i])
+	end
+	shop(districts, Vector3.new(-40, 0, 190), Color3.fromRGB(250, 235, 200), Color3.fromRGB(70, 140, 200), 202, "BEACH BAR")
+	marketStall(districts, Vector3.new(20, 0, 190), Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 255, 255), 203)
+	marketStall(districts, Vector3.new(60, 0, 190), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 255, 255), 204)
+	lookoutTower(districts, Vector3.new(120, 0, 192))
+	boardwalk(districts, -80, 80, 185)
+
+	-- NORTH PROMENADE (Z -205..-185, X -200..200): a long boardwalk with
+	-- benches, lamps, palms and two lookout towers facing the sea.
+	boardwalk(districts, -160, 160, -195)
+	for _, bx in ipairs({ -100, 0, 100 }) do
+		part("PromBenchSeat", Vector3.new(4, 0.5, 1.5), Color3.fromRGB(150, 100, 55), Vector3.new(bx, BEACH_TOP_Y + 1.2, -193), districts, Enum.Material.Wood)
+		part("PromBenchBack", Vector3.new(4, 1.5, 0.3), Color3.fromRGB(150, 100, 55), Vector3.new(bx, BEACH_TOP_Y + 2, -192.3), districts, Enum.Material.Wood)
+	end
+	for _, lx in ipairs({ -50, 50 }) do
+		part("PromLampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), Vector3.new(lx, BEACH_TOP_Y + 3.5, -197), districts)
+		part("PromLampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), Vector3.new(lx, BEACH_TOP_Y + 7.4, -197), districts, Enum.Material.Neon, false)
+	end
+	lookoutTower(districts, Vector3.new(-170, 0, -192))
+	lookoutTower(districts, Vector3.new(170, 0, -192))
+	for i, px in ipairs({ -180, -60, 60, 180 }) do
+		palmTree(districts, Vector3.new(px, 0, -185), 400 + i)
+	end
+
+	-- FOREST GROVES: dense clusters of round and tall trees, a fox and
+	-- deer live in them. NE (X 150..240, Z -200..-170), NW (X -240..-150,
+	-- Z -200..-170), SE (X 160..240, Z 145..175).
+	for i, spot in ipairs({
+		Vector3.new(160, 0, -185), Vector3.new(190, 0, -195), Vector3.new(220, 0, -180),
+		Vector3.new(175, 0, -170), Vector3.new(205, 0, -195), Vector3.new(235, 0, -185),
+		Vector3.new(150, 0, -200), Vector3.new(240, 0, -170),
+	}) do
+		if i % 3 == 0 then
+			table.insert(tallTrees, tallTree(districts, spot, 500 + i))
+		else
+			roundTree(districts, spot, 500 + i)
+		end
+	end
+	for i, spot in ipairs({
+		Vector3.new(-160, 0, -185), Vector3.new(-190, 0, -195), Vector3.new(-220, 0, -180),
+		Vector3.new(-175, 0, -170), Vector3.new(-205, 0, -195), Vector3.new(-235, 0, -185),
+		Vector3.new(-150, 0, -200), Vector3.new(-240, 0, -170),
+	}) do
+		if i % 3 == 0 then
+			table.insert(tallTrees, tallTree(districts, spot, 520 + i))
+		else
+			roundTree(districts, spot, 520 + i)
+		end
+	end
+	for i, spot in ipairs({
+		Vector3.new(170, 0, 150), Vector3.new(200, 0, 160), Vector3.new(230, 0, 145),
+		Vector3.new(185, 0, 170), Vector3.new(215, 0, 175), Vector3.new(240, 0, 160),
+		Vector3.new(160, 0, 175),
+	}) do
+		if i % 3 == 0 then
+			table.insert(tallTrees, tallTree(districts, spot, 540 + i))
+		else
+			roundTree(districts, spot, 540 + i)
+		end
+	end
+
+	-- v6: NEW LIVE ANIMALS — nine more species, all animated by the one
+	-- loop below. Ground wanderers are 2x like the v3.5 ones; the 6th
+	-- spec element is the bob amplitude (rabbits and frogs hop, the
+	-- turtle barely bobs). Seagulls orbit over the sea; fish swim in the
+	-- two sea bands just under the water surface.
+	for _, spec in ipairs({
+		{ buildCat, Vector3.new(160, 0, 0), 30, 0.20, 0.5, 0.25 },
+		{ buildCat, Vector3.new(-200, 0, -60), 15, 0.20, 1.5, 0.25 },
+		{ buildRabbit, Vector3.new(-200, 0, 50), 20, 0.25, 2.5, 0.9 },
+		{ buildRabbit, Vector3.new(185, 0, 165), 15, 0.25, 3.5, 0.9 },
+		{ buildFox, Vector3.new(195, 0, -185), 25, 0.22, 4.5, 0.3 },
+		{ buildDeer, Vector3.new(-195, 0, -185), 25, 0.18, 5.5, 0.3 },
+		{ buildDeer, Vector3.new(200, 0, 160), 20, 0.18, 0.8, 0.3 },
+		{ buildFrog, Vector3.new(200, 0, 120), 12, 0.20, 1.8, 0.7 },
+		{ buildTurtle, Vector3.new(200, 0, 120), 10, 0.06, 2.8, 0.1 },
+		{ buildCrab, Vector3.new(100, 0, 195), 15, 0.18, 3.8, 0.3 },
+		{ buildCrab, Vector3.new(-120, 0, 195), 15, 0.18, 4.8, 0.3 },
+		{ buildCow, Vector3.new(-195, 0, 30), 8, 0.10, 5.8, 0.25 },
+		{ buildPig, Vector3.new(-210, 0, 80), 8, 0.10, 0.3, 0.25 },
+	}) do
+		local model, pivotY = spec[1]()
+		model:ScaleTo(2)
+		pivotY = pivotY * 2
+		model.Parent = animalsFolder
+		table.insert(wanderers, {
+			model = model,
+			home = spec[2],
+			radius = spec[3],
+			speed = spec[4],
+			phase = spec[5],
+			pivotY = pivotY,
+			bobAmp = spec[6],
+		})
+	end
+	for _, spec in ipairs({
+		{ Color3.fromRGB(245, 245, 245), 0, Vector3.new(0, 45, -225), 70 },
+		{ Color3.fromRGB(200, 210, 220), math.pi, Vector3.new(0, 45, 225), 70 },
+	}) do
+		local model, wings = buildBird(spec[1])
+		model:ScaleTo(2)
+		for _, wing in ipairs(wings) do
+			wing.attach = wing.attach * 2
+			wing.centre = wing.centre * 2
+		end
+		model.Parent = animalsFolder
+		table.insert(orbiters, {
+			model = model,
+			wings = wings,
+			centre = spec[3],
+			radius = spec[4],
+			speed = 0.15,
+			phase = spec[2],
+		})
+	end
+	local swimmers = {}
+	for _, spec in ipairs({
+		{ Color3.fromRGB(255, 150, 60), Vector3.new(0, -0.4, -230), 50, 0.12, 0 },
+		{ Color3.fromRGB(90, 180, 255), Vector3.new(0, -0.4, -230), 40, 0.10, 2.0 },
+		{ Color3.fromRGB(255, 220, 80), Vector3.new(0, -0.4, 230), 50, 0.12, 1.0 },
+		{ Color3.fromRGB(255, 150, 60), Vector3.new(0, -0.4, 230), 40, 0.10, 3.0 },
+		{ Color3.fromRGB(180, 120, 255), Vector3.new(0, -0.4, 230), 30, 0.14, 4.0 },
+		{ Color3.fromRGB(90, 180, 255), Vector3.new(0, -0.4, -230), 30, 0.14, 5.0 },
+	}) do
+		local model, _, tail = buildFish(spec[1])
+		model:ScaleTo(2)
+		tail.attach = tail.attach * 2
+		tail.centre = tail.centre * 2
+		model.Parent = animalsFolder
+		table.insert(swimmers, {
+			model = model,
+			tail = tail,
+			centre = spec[2],
+			radius = spec[3],
+			speed = spec[4],
+			phase = spec[5],
+		})
+	end
+	local windmills = { windmillEntry }
+
+	-- v6: TEXTURE / GROUND DETAIL — the last layer that makes the world
+	-- feel real: a marble statue on the village green, beach towels and
+	-- a sandcastle on the south beach, boulders and bushes filling the
+	-- map corners, and flower clusters along the residential street.
+	-- Materials are varied on purpose: Marble, Sand, Cobblestone, Brick,
+	-- Fabric, Grass, Slate — no more flat SmoothPlastic everywhere.
+	part("StatuePedestal", Vector3.new(4, 2, 4), Color3.fromRGB(180, 175, 165), Vector3.new(160, BEACH_TOP_Y + 1, -20), districts, Enum.Material.Marble)
+	part("StatueBody", Vector3.new(2, 3, 2), Color3.fromRGB(200, 195, 185), Vector3.new(160, BEACH_TOP_Y + 3.5, -20), districts, Enum.Material.Marble)
+	local statueHead = Instance.new("Part")
+	statueHead.Name = "StatueHead"
+	statueHead.Shape = Enum.PartType.Ball
+	statueHead.Size = Vector3.new(2, 2, 2)
+	statueHead.Color = Color3.fromRGB(200, 195, 185)
+	statueHead.Material = Enum.Material.Marble
+	statueHead.Anchored = true
+	statueHead.CanCollide = false
+	statueHead.Position = Vector3.new(160, BEACH_TOP_Y + 6, -20)
+	statueHead.Parent = districts
+	for i, tx in ipairs({ -140, -70, 10 }) do
+		local towelColors = {
+			Color3.fromRGB(255, 120, 120), Color3.fromRGB(120, 180, 255), Color3.fromRGB(255, 220, 100),
+		}
+		part("BeachTowel", Vector3.new(3, 0.15, 5), towelColors[i], Vector3.new(tx, BEACH_TOP_Y + 0.3, 200), districts, Enum.Material.Fabric, false)
+	end
+	part("SandcastleBase", Vector3.new(6, 3, 6), Color3.fromRGB(235, 210, 160), Vector3.new(60, BEACH_TOP_Y + 1.5, 200), districts, Enum.Material.Sand)
+	part("SandcastleTop", Vector3.new(4, 2.5, 4), Color3.fromRGB(235, 210, 160), Vector3.new(60, BEACH_TOP_Y + 4.2, 200), districts, Enum.Material.Sand)
+	local scTower = Instance.new("Part")
+	scTower.Name = "SandcastleTower"
+	scTower.Shape = Enum.PartType.Ball
+	scTower.Size = Vector3.new(2.5, 2.5, 2.5)
+	scTower.Color = Color3.fromRGB(235, 210, 160)
+	scTower.Material = Enum.Material.Sand
+	scTower.Anchored = true
+	scTower.CanCollide = false
+	scTower.Position = Vector3.new(60, BEACH_TOP_Y + 6.5, 200)
+	scTower.Parent = districts
+	part("SandcastleFlagPole", Vector3.new(0.2, 2, 0.2), Color3.fromRGB(120, 85, 50), Vector3.new(60, BEACH_TOP_Y + 8, 200), districts, Enum.Material.Wood)
+	part("SandcastleFlag", Vector3.new(1.5, 1, 0.1), Color3.fromRGB(255, 90, 90), Vector3.new(60.8, BEACH_TOP_Y + 8.5, 200), districts, Enum.Material.Fabric, false)
+	for i, spot in ipairs({
+		Vector3.new(240, 0, -120), Vector3.new(-240, 0, -120), Vector3.new(240, 0, 100),
+		Vector3.new(-240, 0, 100), Vector3.new(100, 0, -200), Vector3.new(-100, 0, 200),
+	}) do
+		local rock = Instance.new("Part")
+		rock.Name = "Boulder"
+		rock.Shape = Enum.PartType.Ball
+		rock.Size = Vector3.new(3 + (i % 3), 2 + (i % 2), 3 + (i % 3))
+		rock.Color = Color3.fromRGB(140, 140, 145)
+		rock.Material = Enum.Material.Slate
+		rock.Anchored = true
+		rock.CanCollide = true
+		rock.Position = spot + Vector3.new(0, BEACH_TOP_Y + 0.8, 0)
+		rock.Parent = districts
+	end
+	for _, spot in ipairs({
+		Vector3.new(120, 0, -120), Vector3.new(240, 0, -30), Vector3.new(120, 0, 120),
+		Vector3.new(-120, 0, -120), Vector3.new(-240, 0, 30), Vector3.new(-120, 0, 120),
+		Vector3.new(240, 0, 170), Vector3.new(-240, 0, 170),
+	}) do
+		local bush = Instance.new("Part")
+		bush.Name = "Bush"
+		bush.Shape = Enum.PartType.Ball
+		bush.Size = Vector3.new(3, 2.5, 3)
+		bush.Color = Color3.fromRGB(60, 170, 80)
+		bush.Material = Enum.Material.Grass
+		bush.Anchored = true
+		bush.CanCollide = false
+		bush.Position = spot + Vector3.new(0, BEACH_TOP_Y + 1.2, 0)
+		bush.Parent = districts
+	end
+	for _, spot in ipairs({
+		Vector3.new(190, 0, 108), Vector3.new(210, 0, 132), Vector3.new(135, 0, -55),
+		Vector3.new(180, 0, -20), Vector3.new(220, 0, 20), Vector3.new(150, 0, 60),
+	}) do
+		for _, off in ipairs({ Vector3.new(-1, 0, 0), Vector3.new(1, 0, 0), Vector3.new(0, 0, 1) }) do
+			part("FlowerStem", Vector3.new(0.2, 0.8, 0.2), Color3.fromRGB(60, 160, 80), spot + off + Vector3.new(0, BEACH_TOP_Y + 0.4, 0), districts, Enum.Material.Grass, false)
+			local flower = Instance.new("Part")
+			flower.Name = "Flower"
+			flower.Shape = Enum.PartType.Ball
+			flower.Size = Vector3.new(0.7, 0.7, 0.7)
+			flower.Color = Color3.fromRGB(255, 120, 180)
+			flower.Anchored = true
+			flower.CanCollide = false
+			flower.Position = spot + off + Vector3.new(0, BEACH_TOP_Y + 1, 0)
+			flower.Parent = districts
+		end
+	end
+
 	-- ONE animation loop for the whole bay (v3.4): tall trees lean and
 	-- sway, ground animals wander in small circles with a gentle bob, and
 	-- the birds orbit overhead banking and flapping. A single task.spawn
@@ -1808,7 +2548,9 @@ function WorldBuilder.build()
 				local x = w.home.X + math.cos(a) * w.radius
 				local z = w.home.Z + math.sin(a) * w.radius
 				local heading = math.atan2(-math.sin(a), math.cos(a))
-				local bob = math.abs(math.sin(t * 2 + w.phase)) * 0.25
+				-- v6: per-animal bob amplitude — rabbits and frogs hop,
+				-- the turtle barely bobs. Defaults to the v3.4 0.25.
+				local bob = math.abs(math.sin(t * 2 + w.phase)) * (w.bobAmp or 0.25)
 				w.model:PivotTo(CFrame.new(x, BEACH_TOP_Y + w.pivotY + bob, z) * CFrame.Angles(0, heading, 0))
 			end
 			for _, b in ipairs(orbiters) do
@@ -1855,6 +2597,22 @@ function WorldBuilder.build()
 				local roll = math.rad(3) * math.sin(t * 0.8 + boat.phase + 1)
 				boat.model:PivotTo(CFrame.new(boat.home.X, 0.5 + boat.pivotY + bob, boat.home.Z)
 					* CFrame.Angles(0, boat.heading, roll))
+			end
+			-- v6: fish swim in circles just under the sea surface, tails
+			-- wagging side to side; the farm windmill's rotor turns.
+			for _, s in ipairs(swimmers) do
+				local a = t * s.speed + s.phase
+				local x = s.centre.X + math.cos(a) * s.radius
+				local z = s.centre.Z + math.sin(a) * s.radius
+				local heading = math.atan2(-math.sin(a), math.cos(a))
+				local pivot = CFrame.new(x, s.centre.Y, z) * CFrame.Angles(0, heading, 0)
+				s.model:PivotTo(pivot)
+				local wiggle = math.rad(20) * math.sin(t * 5 + s.phase)
+				s.tail.part.CFrame = pivot * CFrame.new(s.tail.attach)
+					* CFrame.Angles(0, wiggle, 0) * CFrame.new(s.tail.centre - s.tail.attach)
+			end
+			for _, wm in ipairs(windmills) do
+				wm.model:PivotTo(CFrame.new(wm.hub) * CFrame.Angles(0, 0, t * 0.6))
 			end
 			task.wait(0.1)
 		end

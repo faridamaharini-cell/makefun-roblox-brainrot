@@ -62,14 +62,17 @@ function BrainrotFactory.placeOnSurface(model, surfaceY, x, z, yaw)
 end
 
 -- Stagger the floating label height so neighbouring brainrots' labels
--- never stack on one screen line: slot/walker index mod 3 lifts the label
--- by 0 / 1.2 / 2.4 studs. Call after buildBrainrotModel, from the spawner
--- (walker id) or the slotter (slot index).
+-- never stack on one screen line: slot/walker index mod 5 lifts the label
+-- by 0 / 1.8 / 3.6 / 5.4 / 7.2 studs. v6: five steps instead of three —
+-- walkers bunch up in perspective down the conveyor and three steps
+-- still read as one jumbled band in the middle of the screen. Call after
+-- buildBrainrotModel, from the spawner (walker id) or the slotter (slot
+-- index).
 function BrainrotFactory.staggerLabel(model, index)
 	local billboard = model:FindFirstChild("Label", true)
 	if billboard and billboard:IsA("BillboardGui") then
-		local step = (index or 0) % 3
-		billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.2 + step * 1.2, 0)
+		local step = (index or 0) % 5
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.2 + step * 1.8, 0)
 	end
 end
 
@@ -296,7 +299,7 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 	-- lifts neighbours by 0/1.2/2.4 studs so labels never stack.
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
-	billboard.Size = UDim2.new(0, 96, 0, 40)
+	billboard.Size = UDim2.new(0, 84, 0, 34)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Parent = head

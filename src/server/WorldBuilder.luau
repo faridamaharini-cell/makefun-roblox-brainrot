@@ -27,22 +27,31 @@
 -- fixed at the source — see BrainrotFactory.placeOnSurface (measured
 -- bounding-box placement, not the PIVOT_ABOVE_FEET constant) and the
 -- small staggered labels there.
+-- v5 VISUAL POLISH (user: the game looks ugly — make it genuinely good-
+-- looking): one coordinated warm palette (sand, turquoise sea, grass,
+-- cream walls, terracotta roofs) replaces the clashing rainbow; buildings
+-- gain fascia, shutters, flower boxes, door frames and chimney smoke;
+-- stalls show real fruit/bread goods; the plaza gets a fountain and stone
+-- paths; the sea gets foam, the beach dunes and grass tufts; lighting is
+-- warmer with bloom/sun-rays. Game loop, economy and the v4 measured
+-- pivot (placeOnSurface) are untouched.
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
 local WorldBuilder = {}
 
 local BASE_COLORS = {
-	Color3.fromRGB(255, 90, 90),
-	Color3.fromRGB(90, 160, 255),
-	Color3.fromRGB(120, 220, 120),
-	Color3.fromRGB(255, 200, 60),
-	Color3.fromRGB(200, 120, 255),
-	Color3.fromRGB(90, 220, 210),
-	Color3.fromRGB(255, 140, 200),
-	Color3.fromRGB(255, 160, 80),
-	Color3.fromRGB(140, 220, 255),
-	Color3.fromRGB(190, 255, 140),
+	-- v5: muted pastels, one warm family — no more saturated rainbow.
+	Color3.fromRGB(232, 130, 110),
+	Color3.fromRGB(130, 165, 200),
+	Color3.fromRGB(150, 190, 130),
+	Color3.fromRGB(225, 185, 110),
+	Color3.fromRGB(175, 155, 205),
+	Color3.fromRGB(110, 185, 175),
+	Color3.fromRGB(220, 150, 165),
+	Color3.fromRGB(235, 175, 125),
+	Color3.fromRGB(140, 190, 215),
+	Color3.fromRGB(160, 205, 170),
 }
 
 local BASE_Z = { -120, -60, 0, 60, 120 }
@@ -95,7 +104,7 @@ end
 -- the only signs left are the one arch title, one small plate per base
 -- (on its back wall, low) and one small plate per shop front.
 local function signBoard(parent, position, text, textColor, boardSize)
-	local board = part("Sign", boardSize or Vector3.new(7, 1.8, 0.4), Color3.fromRGB(30, 30, 42), position, parent)
+	local board = part("Sign", boardSize or Vector3.new(7, 1.8, 0.4), Color3.fromRGB(70, 45, 30), position, parent)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "SignLabel"
 	gui.Size = UDim2.new(0, 150, 0, 30)
@@ -130,7 +139,7 @@ local function palmTree(parent, spot, index)
 		leaf.Name = "PalmLeaf" .. index .. "_" .. i
 		leaf.Shape = Enum.PartType.Ball
 		leaf.Size = Vector3.new(4.5, 2.2, 4.5)
-		leaf.Color = Color3.fromRGB(50, 185, 80)
+		leaf.Color = (i % 2 == 0) and Color3.fromRGB(45, 165, 70) or Color3.fromRGB(60, 195, 85)
 		leaf.Anchored = true
 		leaf.CanCollide = false
 		leaf.Position = spot + Vector3.new(math.cos(angle) * 2.6, 9.2, math.sin(angle) * 2.6)
@@ -140,11 +149,23 @@ local function palmTree(parent, spot, index)
 	crown.Name = "PalmCrown" .. index
 	crown.Shape = Enum.PartType.Ball
 	crown.Size = Vector3.new(5, 4, 5)
-	crown.Color = Color3.fromRGB(60, 200, 90)
+	crown.Color = Color3.fromRGB(75, 210, 105)
 	crown.Anchored = true
 	crown.CanCollide = false
 	crown.Position = spot + Vector3.new(0, 9.6, 0)
 	crown.Parent = parent
+	-- v5: coconuts under the crown.
+	for i = 1, 3 do
+		local nut = Instance.new("Part")
+		nut.Name = "Coconut" .. index .. "_" .. i
+		nut.Shape = Enum.PartType.Ball
+		nut.Size = Vector3.new(1.1, 1.1, 1.1)
+		nut.Color = Color3.fromRGB(120, 85, 45)
+		nut.Anchored = true
+		nut.CanCollide = false
+		nut.Position = spot + Vector3.new(math.cos(i * 2.1) * 1.4, 8.2, math.sin(i * 2.1) * 1.4)
+		nut.Parent = parent
+	end
 end
 
 local function marketStall(parent, position, stripeA, stripeB, index)
@@ -160,6 +181,26 @@ local function marketStall(parent, position, stripeA, stripeB, index)
 		local color = (i % 2 == 0) and stripeA or stripeB
 		local panel = part("Awning", Vector3.new(1.5, 0.25, 4.4), color, position + Vector3.new(-3.75 + i * 1.5, 5.2, 0.4), stall, Enum.Material.Fabric, false)
 		panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(math.rad(-12), 0, 0)
+	end
+	-- v5: visible goods on the counter — fruit and bread, not one grey cube.
+	for i, fruit in ipairs({
+		{ Vector3.new(-2.2, 3.1, 0), Color3.fromRGB(240, 140, 50) },
+		{ Vector3.new(-0.7, 3.1, 0), Color3.fromRGB(210, 70, 60) },
+		{ Vector3.new(0.8, 3.1, 0), Color3.fromRGB(150, 195, 90) },
+		{ Vector3.new(2.2, 3.1, 0), Color3.fromRGB(240, 200, 90) },
+	}) do
+		local f = Instance.new("Part")
+		f.Name = "Fruit" .. i
+		f.Shape = Enum.PartType.Ball
+		f.Size = Vector3.new(1.1, 1.1, 1.1)
+		f.Color = fruit[2]
+		f.Anchored = true
+		f.CanCollide = false
+		f.Position = position + fruit[1]
+		f.Parent = stall
+	end
+	for _, bx in ipairs({ -1.5, 1.5 }) do
+		part("Bread", Vector3.new(1.4, 0.7, 1.0), Color3.fromRGB(220, 180, 120), position + Vector3.new(bx, 2.75, 0.9), stall, Enum.Material.SmoothPlastic, false)
 	end
 end
 
@@ -182,6 +223,16 @@ local function pitchedRoof(parent, center, halfSpan, rise, len, color, ridgeAxis
 			panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(0, 0, -side * angle)
 		end
 	end
+	-- v5: cream fascia boards along both eaves.
+	if ridgeAxis == "X" then
+		for _, side in ipairs({ -1, 1 }) do
+			part("RoofFascia", Vector3.new(len, 0.5 * scale, 0.35 * scale), Color3.fromRGB(250, 240, 220), center + Vector3.new(0, -rise + 0.15, side * halfSpan), parent, Enum.Material.SmoothPlastic, false)
+		end
+	else
+		for _, side in ipairs({ -1, 1 }) do
+			part("RoofFascia", Vector3.new(0.35 * scale, 0.5 * scale, len), Color3.fromRGB(250, 240, 220), center + Vector3.new(side * halfSpan, -rise + 0.15, 0), parent, Enum.Material.SmoothPlastic, false)
+		end
+	end
 	if ridgeAxis == "X" then
 		part("RidgeBeam", Vector3.new(len, 0.6 * scale, 0.6 * scale), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
 	else
@@ -195,6 +246,31 @@ local function xWindow(parent, x, y, z, facing, scale)
 	scale = scale or BS
 	part("WindowFrame", Vector3.new(0.2 * scale, 2.2 * scale, 2.6 * scale), Color3.fromRGB(255, 255, 255), Vector3.new(x + facing * 0.1 * scale, y, z), parent, Enum.Material.SmoothPlastic, false)
 	part("WindowGlass", Vector3.new(0.26 * scale, 1.8 * scale, 2.2 * scale), Color3.fromRGB(150, 210, 255), Vector3.new(x + facing * 0.14 * scale, y, z), parent, Enum.Material.Glass, false)
+	-- v5: shutters and a flower box under every window.
+	for _, sz in ipairs({ -1, 1 }) do
+		part("WindowShutter", Vector3.new(0.15 * scale, 2.2 * scale, 0.9 * scale), Color3.fromRGB(180, 90, 60), Vector3.new(x + facing * 0.12 * scale, y, z + sz * 1.75 * scale), parent, Enum.Material.Wood, false)
+	end
+	part("FlowerBox", Vector3.new(0.5 * scale, 0.5 * scale, 2.4 * scale), Color3.fromRGB(120, 80, 45), Vector3.new(x + facing * 0.3 * scale, y - 1.35 * scale, z), parent, Enum.Material.Wood, false)
+	local petalColors = { Color3.fromRGB(235, 120, 150), Color3.fromRGB(240, 200, 90), Color3.fromRGB(255, 255, 255) }
+	for fi, fx in ipairs({ -0.8, 0, 0.8 }) do
+		part("WindowFlower", Vector3.new(0.45 * scale, 0.45 * scale, 0.45 * scale), petalColors[fi], Vector3.new(x + facing * 0.3 * scale, y - 1.0 * scale, z + fx * scale), parent, Enum.Material.SmoothPlastic, false)
+	end
+end
+
+-- v5: chimney smoke — three soft puffs drifting up from a chimney top.
+local function chimneySmoke(parent, x, y, z)
+	for i, s in ipairs({ 1.2, 1.7, 2.2 }) do
+		local puff = Instance.new("Part")
+		puff.Name = "Smoke"
+		puff.Shape = Enum.PartType.Ball
+		puff.Size = Vector3.new(s, s, s)
+		puff.Color = Color3.fromRGB(245, 245, 245)
+		puff.Transparency = 0.55
+		puff.Anchored = true
+		puff.CanCollide = false
+		puff.Position = Vector3.new(x + i * 0.5, y + i * 1.5, z)
+		puff.Parent = parent
+	end
 end
 
 -- A detailed two-storey beach house (v3.4: HS ~2.5x, extra-tall walls and
@@ -216,6 +292,21 @@ local function house(parent, pos, wallColor, roofColor, facing, index)
 	part("MidTrim", Vector3.new(W + 0.4 * HS, 0.4 * HS, D + 0.4 * HS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 5.6 * HS, 0), home, Enum.Material.SmoothPlastic, false)
 	local faceX = pos.X + facing * (W / 2)
 	part("Door", Vector3.new(0.3 * HS, 3.6 * HS, 2 * HS), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16 * HS, baseY + 1.8 * HS, pos.Z), home, Enum.Material.Wood)
+	-- v5: cream door frame + brass knob.
+	for _, pz in ipairs({ -1.3 * HS, 1.3 * HS }) do
+		part("DoorFrame", Vector3.new(0.4 * HS, 3.9 * HS, 0.4 * HS), Color3.fromRGB(250, 240, 220), Vector3.new(faceX + facing * 0.2 * HS, baseY + 1.95 * HS, pos.Z + pz), home, Enum.Material.SmoothPlastic, false)
+	end
+	part("DoorLintel", Vector3.new(0.4 * HS, 0.4 * HS, 3.0 * HS), Color3.fromRGB(250, 240, 220), Vector3.new(faceX + facing * 0.2 * HS, baseY + 3.9 * HS, pos.Z), home, Enum.Material.SmoothPlastic, false)
+	local knob = Instance.new("Part")
+	knob.Name = "DoorKnob"
+	knob.Shape = Enum.PartType.Ball
+	knob.Size = Vector3.new(0.35 * HS, 0.35 * HS, 0.35 * HS)
+	knob.Color = Color3.fromRGB(230, 185, 95)
+	knob.Material = Enum.Material.Neon
+	knob.Anchored = true
+	knob.CanCollide = false
+	knob.Position = Vector3.new(faceX + facing * 0.4 * HS, baseY + 1.8 * HS, pos.Z + 0.6 * HS)
+	knob.Parent = home
 	-- Two rows of windows on the front: ground floor and second floor.
 	for _, wy in ipairs({ 3.6 * HS, 7.4 * HS }) do
 		xWindow(home, faceX, baseY + wy, pos.Z - 2.6 * HS, facing, HS)
@@ -226,6 +317,7 @@ local function house(parent, pos, wallColor, roofColor, facing, index)
 	local cx = pos.X + 3 * HS
 	part("Chimney", Vector3.new(1.2 * HS, 3 * HS, 1.2 * HS), Color3.fromRGB(150, 60, 60), Vector3.new(cx, ridgeY - 1 * HS, pos.Z - 2 * HS), home, Enum.Material.SmoothPlastic)
 	part("ChimneyCap", Vector3.new(1.8 * HS, 0.5 * HS, 1.8 * HS), Color3.fromRGB(90, 60, 35), Vector3.new(cx, ridgeY + 0.7 * HS, pos.Z - 2 * HS), home, Enum.Material.SmoothPlastic, false)
+	chimneySmoke(home, cx, ridgeY + 1.0 * HS, pos.Z - 2 * HS)
 	-- Shallower porch: floor only 2*HS deep in X, so its outer edge stops
 	-- a stud short of the fences at X ±9.
 	local porchX = faceX + facing * 0.8 * HS
@@ -253,6 +345,11 @@ local function barn(parent, pos, wallColor, roofColor, index)
 		part("BarnDoor", Vector3.new(2.4 * BS, 4.6 * BS, 0.3 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + dx, baseY + 2.3 * BS, faceZ + 0.16 * BS), b, Enum.Material.Wood)
 	end
 	part("DoorBeam", Vector3.new(5.6 * BS, 0.5 * BS, 0.35 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 4.9 * BS, faceZ + 0.16 * BS), b, Enum.Material.Wood)
+	-- v5: cream frame around the double doors.
+	for _, px in ipairs({ -2.9 * BS, 2.9 * BS }) do
+		part("DoorFrame", Vector3.new(0.4 * BS, 5.0 * BS, 0.4 * BS), Color3.fromRGB(250, 240, 220), Vector3.new(pos.X + px, baseY + 2.5 * BS, faceZ + 0.2 * BS), b, Enum.Material.SmoothPlastic, false)
+	end
+	part("DoorLintel", Vector3.new(6.2 * BS, 0.4 * BS, 0.4 * BS), Color3.fromRGB(250, 240, 220), Vector3.new(pos.X, baseY + 5.1 * BS, faceZ + 0.2 * BS), b, Enum.Material.SmoothPlastic, false)
 	part("LoftDoor", Vector3.new(2 * BS, 2 * BS, 0.3 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 7 * BS, faceZ + 0.16 * BS), b, Enum.Material.Wood)
 	part("LoftBeam", Vector3.new(3 * BS, 0.4 * BS, 0.4 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 8.3 * BS, faceZ + 0.2 * BS), b, Enum.Material.Wood)
 	for _, sx in ipairs({ -1, 1 }) do
@@ -264,6 +361,7 @@ local function barn(parent, pos, wallColor, roofColor, index)
 	pitchedRoof(b, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1 * BS, 3.5 * BS, W + 1 * BS, roofColor, "X")
 	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X - 3 * BS, ridgeY - 1 * BS, pos.Z + 3 * BS), b, Enum.Material.SmoothPlastic)
 	part("ChimneyCap", Vector3.new(1.8 * BS, 0.5 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X - 3 * BS, ridgeY + 0.7 * BS, pos.Z + 3 * BS), b, Enum.Material.SmoothPlastic, false)
+	chimneySmoke(b, pos.X - 3 * BS, ridgeY + 1.0 * BS, pos.Z + 3 * BS)
 	local porchZ = faceZ + 1.6 * BS
 	part("PorchFloor", Vector3.new(6 * BS, 0.3 * BS, 3 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X, baseY + 0.15 * BS, porchZ), b, Enum.Material.Wood)
 	for _, px in ipairs({ -2.6 * BS, 2.6 * BS }) do
@@ -271,6 +369,16 @@ local function barn(parent, pos, wallColor, roofColor, index)
 	end
 	local awn = part("PorchAwning", Vector3.new(6.2 * BS, 0.25 * BS, 3.2 * BS), roofColor, Vector3.new(pos.X, baseY + 5.4 * BS, porchZ + 0.4 * BS), b, Enum.Material.Fabric, false)
 	awn.CFrame = CFrame.new(awn.Position) * CFrame.Angles(math.rad(12), 0, 0)
+	-- v5: a hay bale by the porch.
+	local bale = Instance.new("Part")
+	bale.Name = "HayBale"
+	bale.Shape = Enum.PartType.Cylinder
+	bale.Size = Vector3.new(3, 2.2, 2.2)
+	bale.Color = Color3.fromRGB(230, 200, 80)
+	bale.Anchored = true
+	bale.CanCollide = true
+	bale.Position = Vector3.new(pos.X + 5.5 * BS, baseY + 1.1 * BS, porchZ)
+	bale.Parent = b
 end
 
 -- A market shop: big display window, door, striped awning, sign board,
@@ -285,6 +393,11 @@ local function shop(parent, pos, wallColor, roofColor, index, name)
 	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.5 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25 * BS, 0), s, Enum.Material.SmoothPlastic, false)
 	local faceZ = pos.Z + D / 2
 	part("Door", Vector3.new(2 * BS, 3.6 * BS, 0.3 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X - 2.5 * BS, baseY + 1.8 * BS, faceZ + 0.16 * BS), s, Enum.Material.Wood)
+	-- v5: cream door frame.
+	for _, dx in ipairs({ -1.3 * BS, 1.3 * BS }) do
+		part("DoorFrame", Vector3.new(0.4 * BS, 3.9 * BS, 0.4 * BS), Color3.fromRGB(250, 240, 220), Vector3.new(pos.X - 2.5 * BS + dx, baseY + 1.95 * BS, faceZ + 0.2 * BS), s, Enum.Material.SmoothPlastic, false)
+	end
+	part("DoorLintel", Vector3.new(3.0 * BS, 0.4 * BS, 0.4 * BS), Color3.fromRGB(250, 240, 220), Vector3.new(pos.X - 2.5 * BS, baseY + 3.9 * BS, faceZ + 0.2 * BS), s, Enum.Material.SmoothPlastic, false)
 	part("ShopWindowFrame", Vector3.new(4.5 * BS, 2.6 * BS, 0.2 * BS), Color3.fromRGB(255, 255, 255), Vector3.new(pos.X + 2 * BS, baseY + 3.4 * BS, faceZ + 0.1 * BS), s, Enum.Material.SmoothPlastic, false)
 	part("ShopWindowGlass", Vector3.new(4.1 * BS, 2.2 * BS, 0.26 * BS), Color3.fromRGB(150, 210, 255), Vector3.new(pos.X + 2 * BS, baseY + 3.4 * BS, faceZ + 0.14 * BS), s, Enum.Material.Glass, false)
 	xWindow(s, pos.X + W / 2, baseY + 3.6 * BS, pos.Z, 1)
@@ -294,12 +407,30 @@ local function shop(parent, pos, wallColor, roofColor, index, name)
 	pitchedRoof(s, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1 * BS, 3 * BS, W + 1 * BS, roofColor, "X")
 	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X + 3 * BS, ridgeY - 1 * BS, pos.Z + 2 * BS), s, Enum.Material.SmoothPlastic)
 	part("ChimneyCap", Vector3.new(1.8 * BS, 0.5 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + 3 * BS, ridgeY + 0.7 * BS, pos.Z + 2 * BS), s, Enum.Material.SmoothPlastic, false)
+	chimneySmoke(s, pos.X + 3 * BS, ridgeY + 1.0 * BS, pos.Z + 2 * BS)
 	for i = 0, 2 do
 		local color = (i % 2 == 0) and roofColor or Color3.fromRGB(255, 255, 255)
 		local panel = part("ShopAwning", Vector3.new(1.6 * BS, 0.25 * BS, 2.2 * BS), color, Vector3.new(pos.X + 0.4 * BS + i * 1.6 * BS, baseY + 5.0 * BS, faceZ + 0.9 * BS), s, Enum.Material.Fabric, false)
 		panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(math.rad(12), 0, 0)
 	end
 	part("PorchFloor", Vector3.new(4 * BS, 0.3 * BS, 2.5 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X - 2.5 * BS, baseY + 0.15 * BS, faceZ + 1.4 * BS), s, Enum.Material.Wood)
+	-- v5: goods on display outside the shop — fruit on a table, fish in a crate.
+	part("DisplayTable", Vector3.new(3.5 * BS, 1 * BS, 2 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X + 2 * BS, baseY + 0.5 * BS, faceZ + 2.2 * BS), s, Enum.Material.Wood)
+	for i, fruit in ipairs({ Color3.fromRGB(240, 140, 50), Color3.fromRGB(210, 70, 60), Color3.fromRGB(150, 195, 90) }) do
+		local f = Instance.new("Part")
+		f.Name = "ShopFruit" .. i
+		f.Shape = Enum.PartType.Ball
+		f.Size = Vector3.new(1.1, 1.1, 1.1)
+		f.Color = fruit
+		f.Anchored = true
+		f.CanCollide = false
+		f.Position = Vector3.new(pos.X + (0.8 + i * 1.1) * BS, baseY + 1.55 * BS, faceZ + 2.2 * BS)
+		f.Parent = s
+	end
+	part("FishCrate", Vector3.new(2 * BS, 1.6 * BS, 2 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X - 5.5 * BS, baseY + 0.8 * BS, faceZ + 1.6 * BS), s, Enum.Material.Wood)
+	for _, fx in ipairs({ -0.5, 0.5 }) do
+		part("Fish", Vector3.new(1.2 * BS, 0.35 * BS, 0.5 * BS), Color3.fromRGB(150, 185, 205), Vector3.new(pos.X - 5.5 * BS + fx * BS, baseY + 1.8 * BS, faceZ + 1.6 * BS), s, Enum.Material.SmoothPlastic, false)
+	end
 end
 
 -- A small hut with a single-slope (shed) roof, door + windows on the
@@ -314,6 +445,11 @@ local function hut(parent, pos, wallColor, roofColor, facing, index)
 	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.4 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.2 * BS, 0), h, Enum.Material.SmoothPlastic, false)
 	local faceX = pos.X + facing * (W / 2)
 	part("Door", Vector3.new(0.3 * BS, 3.2 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16 * BS, baseY + 1.6 * BS, pos.Z), h, Enum.Material.Wood)
+	-- v5: cream door frame.
+	for _, pz in ipairs({ -1.2 * BS, 1.2 * BS }) do
+		part("DoorFrame", Vector3.new(0.4 * BS, 3.5 * BS, 0.4 * BS), Color3.fromRGB(250, 240, 220), Vector3.new(faceX + facing * 0.2 * BS, baseY + 1.75 * BS, pos.Z + pz), h, Enum.Material.SmoothPlastic, false)
+	end
+	part("DoorLintel", Vector3.new(0.4 * BS, 0.4 * BS, 2.8 * BS), Color3.fromRGB(250, 240, 220), Vector3.new(faceX + facing * 0.2 * BS, baseY + 3.5 * BS, pos.Z), h, Enum.Material.SmoothPlastic, false)
 	xWindow(h, faceX, baseY + 3.4 * BS, pos.Z - 2.2 * BS, facing)
 	xWindow(h, faceX, baseY + 3.4 * BS, pos.Z + 2.2 * BS, facing)
 	local roof = part("ShedRoof", Vector3.new(W + 1.5 * BS, 0.35 * BS, D + 1 * BS), roofColor, Vector3.new(pos.X, baseY + H + 1.6 * BS, pos.Z), h, Enum.Material.SmoothPlastic, false)
@@ -330,11 +466,11 @@ local function gatehouse(parent, pos)
 	g.Parent = parent
 	local baseY = BEACH_TOP_Y
 	for _, sx in ipairs({ -1, 1 }) do
-		part("GateTower", Vector3.new(3 * BS, 9 * BS, 3 * BS), Color3.fromRGB(255, 200, 60), Vector3.new(pos.X + sx * 10 * BS, baseY + 4.5 * BS, pos.Z), g, Enum.Material.SmoothPlastic)
-		part("TowerCap", Vector3.new(3.8 * BS, 0.6 * BS, 3.8 * BS), Color3.fromRGB(200, 120, 255), Vector3.new(pos.X + sx * 10 * BS, baseY + 9.3 * BS, pos.Z), g, Enum.Material.SmoothPlastic, false)
+		part("GateTower", Vector3.new(3 * BS, 9 * BS, 3 * BS), Color3.fromRGB(250, 235, 205), Vector3.new(pos.X + sx * 10 * BS, baseY + 4.5 * BS, pos.Z), g, Enum.Material.SmoothPlastic)
+		part("TowerCap", Vector3.new(3.8 * BS, 0.6 * BS, 3.8 * BS), Color3.fromRGB(198, 102, 62), Vector3.new(pos.X + sx * 10 * BS, baseY + 9.3 * BS, pos.Z), g, Enum.Material.SmoothPlastic, false)
 	end
 	part("GateBeam", Vector3.new(23 * BS, 2 * BS, 3 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X, baseY + 9.5 * BS, pos.Z), g, Enum.Material.Wood)
-	pitchedRoof(g, Vector3.new(pos.X, baseY + 11.5 * BS, pos.Z), 2.5 * BS, 1.5 * BS, 24 * BS, Color3.fromRGB(255, 90, 90), "Z")
+	pitchedRoof(g, Vector3.new(pos.X, baseY + 11.5 * BS, pos.Z), 2.5 * BS, 1.5 * BS, 24 * BS, Color3.fromRGB(175, 80, 55), "Z")
 end
 
 -- A wooden fence run along Z: posts every ~10 studs + two rails.
@@ -369,15 +505,18 @@ local function roundTree(parent, spot, index)
 	trunk.CFrame = CFrame.new(spot + Vector3.new(0, baseY + 3.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	trunk.Parent = t
 	for _, leaf in ipairs({
-		{ Vector3.new(0, 8.5, 0), 6.5 },
-		{ Vector3.new(-2.2, 7, 0), 4.5 },
-		{ Vector3.new(2.2, 7, 0), 4.5 },
+		-- v5: layered canopy — dark base, mid green, light top.
+		{ Vector3.new(0, 8.5, 0), 6.5, Color3.fromRGB(55, 175, 80) },
+		{ Vector3.new(-2.2, 7, 0), 4.5, Color3.fromRGB(45, 160, 70) },
+		{ Vector3.new(2.2, 7, 0), 4.5, Color3.fromRGB(45, 160, 70) },
+		{ Vector3.new(0, 10.2, 0), 4.5, Color3.fromRGB(90, 205, 100) },
+		{ Vector3.new(-1.5, 9.2, 1.5), 3.5, Color3.fromRGB(75, 195, 90) },
 	}) do
 		local ball = Instance.new("Part")
 		ball.Name = "TreeLeaves"
 		ball.Shape = Enum.PartType.Ball
 		ball.Size = Vector3.new(leaf[2], leaf[2], leaf[2])
-		ball.Color = Color3.fromRGB(50, 185, 80)
+		ball.Color = leaf[3]
 		ball.Anchored = true
 		ball.CanCollide = false
 		ball.Position = spot + leaf[1] + Vector3.new(0, baseY, 0)
@@ -407,15 +546,15 @@ local function tallTree(parent, spot, index)
 	trunk.Parent = t
 	local leaves = {}
 	for _, leaf in ipairs({
-		{ Vector3.new(0, 2.5, 0), 9 },
-		{ Vector3.new(-2.8, 0, 0), 6.5 },
-		{ Vector3.new(2.8, 0, 0), 6.5 },
+		{ Vector3.new(0, 2.5, 0), 9, Color3.fromRGB(60, 190, 85) },
+		{ Vector3.new(-2.8, 0, 0), 6.5, Color3.fromRGB(45, 165, 75) },
+		{ Vector3.new(2.8, 0, 0), 6.5, Color3.fromRGB(45, 165, 75) },
 	}) do
 		local ball = Instance.new("Part")
 		ball.Name = "TallLeaves"
 		ball.Shape = Enum.PartType.Ball
 		ball.Size = Vector3.new(leaf[2], leaf[2], leaf[2])
-		ball.Color = Color3.fromRGB(50, 185, 80)
+		ball.Color = leaf[3]
 		ball.Anchored = true
 		ball.CanCollide = false
 		ball.Position = base + Vector3.new(0, trunkLen, 0) + leaf[1]
@@ -830,18 +969,36 @@ function WorldBuilder.build()
 	-- capability, which a game Script lacks, so writing it killed build()
 	-- on its first Lighting line. Future is already baked into the place
 	-- by default.project.json's Lighting properties.)
-	Lighting.ClockTime = 15
-	Lighting.Brightness = 2
-	Lighting.Ambient = Color3.fromRGB(90, 80, 70)
-	Lighting.OutdoorAmbient = Color3.fromRGB(120, 130, 150)
+	-- v5: warm late-afternoon sun (ClockTime 14.5), warm ambient, peach haze,
+	-- plus Bloom + SunRays + a whisper of ColorCorrection for a sunny glow.
+	-- (Lighting.Technology stays in default.project.json only — never here.)
+	Lighting.ClockTime = 14.5
+	Lighting.Brightness = 2.2
+	Lighting.Ambient = Color3.fromRGB(115, 95, 75)
+	Lighting.OutdoorAmbient = Color3.fromRGB(150, 140, 120)
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.28
-	atmosphere.Offset = 0.25
-	atmosphere.Color = Color3.fromRGB(200, 220, 255)
-	atmosphere.Decay = Color3.fromRGB(120, 140, 180)
-	atmosphere.Glare = 0.4
-	atmosphere.Haze = 1.5
+	atmosphere.Density = 0.22
+	atmosphere.Offset = 0.2
+	atmosphere.Color = Color3.fromRGB(255, 225, 190)
+	atmosphere.Decay = Color3.fromRGB(180, 160, 130)
+	atmosphere.Glare = 0.5
+	atmosphere.Haze = 1.2
 	atmosphere.Parent = Lighting
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = 0.25
+	bloom.Size = 20
+	bloom.Threshold = 0.95
+	bloom.Parent = Lighting
+	local rays = Instance.new("SunRaysEffect")
+	rays.Intensity = 0.12
+	rays.Spread = 0.8
+	rays.Parent = Lighting
+	local grade = Instance.new("ColorCorrectionEffect")
+	grade.Brightness = 0.02
+	grade.Contrast = 0.05
+	grade.Saturation = 0.08
+	grade.TintColor = Color3.fromRGB(255, 245, 230)
+	grade.Parent = Lighting
 
 	-- v4 GROUND — the whole point of the rebuild. v3.6's beach was a
 	-- single 460x400 plate, so 26-stud strips of grey studded baseplate
@@ -867,10 +1024,10 @@ function WorldBuilder.build()
 	-- Sand and grass MUST collide (they are the floor players walk on);
 	-- the sea must NOT collide (players wade to the shore, boats float).
 	groundTile("Sand", 512, 512, 0, 0, 0.2, Color3.fromRGB(238, 214, 150), Enum.Material.Sand, true)
-	groundTile("GrassWest", 160, 340, -150, 0, 0.35, Color3.fromRGB(110, 200, 90), Enum.Material.Grass, true)
-	groundTile("GrassEast", 160, 340, 150, 0, 0.35, Color3.fromRGB(110, 200, 90), Enum.Material.Grass, true)
-	groundTile("SeaNorth", 512, 51, 0, -230.5, 0.5, Color3.fromRGB(40, 180, 220), Enum.Material.Neon, false)
-	groundTile("SeaSouth", 512, 51, 0, 230.5, 0.5, Color3.fromRGB(40, 180, 220), Enum.Material.Neon, false)
+	groundTile("GrassWest", 160, 340, -150, 0, 0.35, Color3.fromRGB(125, 195, 95), Enum.Material.Grass, true)
+	groundTile("GrassEast", 160, 340, 150, 0, 0.35, Color3.fromRGB(125, 195, 95), Enum.Material.Grass, true)
+	groundTile("SeaNorth", 512, 51, 0, -230.5, 0.5, Color3.fromRGB(55, 185, 205), Enum.Material.SmoothPlastic, false)
+	groundTile("SeaSouth", 512, 51, 0, 230.5, 0.5, Color3.fromRGB(55, 185, 205), Enum.Material.SmoothPlastic, false)
 	-- Coverage proof: every cell of a 32x32 grid over the map must be
 	-- inside at least one ground tile. (Sand alone covers all 1024
 	-- cells; the check guards against a future edit shrinking it.)
@@ -893,6 +1050,55 @@ function WorldBuilder.build()
 		assert(covered == total, "v4 ground coverage FAILED: " .. (total - covered) .. " bare cells — grey baseplate would show")
 	end
 	checkGroundCoverage()
+	-- v5: shore foam where the sea meets the sand, sand dunes along the
+	-- beach, grass tufts on the lawns, and stone paths — plaza to arch and
+	-- from the conveyor to each base front — so the ground reads varied.
+	for _, fz in ipairs({ -206.5, 206.5 }) do
+		part("SeaFoam", Vector3.new(512, 0.15, 3), Color3.fromRGB(255, 250, 240), Vector3.new(0, 0.55, fz), world, Enum.Material.SmoothPlastic, false)
+	end
+	for _, spot in ipairs({
+		Vector3.new(-180, 0, -195), Vector3.new(-60, 0, -195),
+		Vector3.new(60, 0, -195), Vector3.new(180, 0, -195),
+		Vector3.new(-180, 0, 195), Vector3.new(-60, 0, 195),
+		Vector3.new(60, 0, 195), Vector3.new(180, 0, 195),
+	}) do
+		local dune = Instance.new("Part")
+		dune.Name = "Dune"
+		dune.Shape = Enum.PartType.Ball
+		dune.Size = Vector3.new(10, 3, 7)
+		dune.Color = Color3.fromRGB(228, 200, 135)
+		dune.Material = Enum.Material.Sand
+		dune.Anchored = true
+		dune.CanCollide = false
+		dune.Position = spot + Vector3.new(0, BEACH_TOP_Y + 0.8, 0)
+		dune.Parent = world
+	end
+	for _, spot in ipairs({
+		Vector3.new(-90, 0, -100), Vector3.new(90, 0, -100),
+		Vector3.new(-90, 0, 100), Vector3.new(90, 0, 100),
+		Vector3.new(-150, 0, -60), Vector3.new(150, 0, -60),
+		Vector3.new(-150, 0, 60), Vector3.new(150, 0, 60),
+	}) do
+		for i = 1, 3 do
+			local tuft = Instance.new("Part")
+			tuft.Name = "GrassTuft"
+			tuft.Shape = Enum.PartType.Ball
+			tuft.Size = Vector3.new(1.2, 1.2, 1.2)
+			tuft.Color = Color3.fromRGB(110, 190, 85)
+			tuft.Anchored = true
+			tuft.CanCollide = false
+			tuft.Position = spot + Vector3.new((i - 2) * 1.1, BEACH_TOP_Y + 0.6, (i % 2) * 0.9)
+			tuft.Parent = world
+		end
+	end
+	for _, pz in ipairs({ -120, -60, 0, 60, 120 }) do
+		for _, side in ipairs({ -1, 1 }) do
+			part("StonePath", Vector3.new(5, 0.2, 5), Color3.fromRGB(215, 205, 185), Vector3.new(side * 16, BEACH_TOP_Y + 0.1, pz), world, Enum.Material.Slate, false)
+		end
+	end
+	for _, px in ipairs({ -3, 3 }) do
+		part("StonePath", Vector3.new(4, 0.15, 4), Color3.fromRGB(215, 205, 185), Vector3.new(px, BEACH_TOP_Y + 0.08, -152), world, Enum.Material.Slate, false)
+	end
 
 	-- Animated water shimmer: the two sea bands bob gently around their
 	-- base height (absolute Y each tick — never accumulated, or the sea
@@ -923,9 +1129,13 @@ function WorldBuilder.build()
 	local conveyor = Instance.new("Folder")
 	conveyor.Name = "Conveyor"
 	conveyor.Parent = world
-	part("Strip", Vector3.new(14, 1, 300), Color3.fromRGB(55, 55, 70), Vector3.new(0, 0.5, 5), conveyor)
+	part("Strip", Vector3.new(14, 1, 300), Color3.fromRGB(122, 82, 52), Vector3.new(0, 0.5, 5), conveyor, Enum.Material.Wood)
 	for _, side in ipairs({ -1, 1 }) do
 		part("Rail", Vector3.new(0.6, 1.6, 300), Color3.fromRGB(255, 200, 60), Vector3.new(side * 7.2, 1.3, 5), conveyor, Enum.Material.Neon)
+	end
+	-- v5: boardwalk plank seams across the belt.
+	for z = -140, 140, 20 do
+		part("PlankSeam", Vector3.new(13.6, 0.12, 0.5), Color3.fromRGB(90, 60, 35), Vector3.new(0, 1.02, z), conveyor, Enum.Material.SmoothPlastic, false)
 	end
 	local chevrons = {}
 	for z = -135, 145, 20 do
@@ -952,9 +1162,13 @@ function WorldBuilder.build()
 	arch.Name = "Arch"
 	arch.Parent = world
 	for _, side in ipairs({ -1, 1 }) do
-		part("ArchPost", Vector3.new(1.5, 13, 1.5), Color3.fromRGB(255, 90, 140), Vector3.new(side * 8, 6.5, -148), arch)
+		part("ArchPost", Vector3.new(1.5, 13, 1.5), Color3.fromRGB(250, 235, 205), Vector3.new(side * 8, 6.5, -148), arch)
+		part("ArchCap", Vector3.new(2.2, 0.8, 2.2), Color3.fromRGB(198, 102, 62), Vector3.new(side * 8, 13.4, -148), arch, Enum.Material.SmoothPlastic, false)
 	end
 	signBoard(arch, Vector3.new(0, 14, -148), "BRAINROT BAY", Color3.fromRGB(255, 220, 80), Vector3.new(16, 2.5, 0.6))
+	-- v5: palms framing the arch — the first thing past the gatehouse.
+	palmTree(world, Vector3.new(-14, 0, -148), 101)
+	palmTree(world, Vector3.new(14, 0, -148), 102)
 
 	-- Spawn plaza: checker tiles where newcomers first land.
 	local plaza = Instance.new("Folder")
@@ -962,8 +1176,77 @@ function WorldBuilder.build()
 	plaza.Parent = world
 	for row = 0, 3 do
 		for col = 0, 7 do
-			local color = ((row + col) % 2 == 0) and Color3.fromRGB(255, 240, 200) or Color3.fromRGB(90, 200, 230)
+			local color = ((row + col) % 2 == 0) and Color3.fromRGB(255, 242, 214) or Color3.fromRGB(235, 175, 140)
 			part("PlazaTile", Vector3.new(4.8, 0.2, 4.8), color, Vector3.new(-17.5 + col * 5, BEACH_TOP_Y + 0.1, -172 + row * 5), plaza, Enum.Material.SmoothPlastic, false)
+		end
+	end
+	-- v5: plaza fountain — the centrepiece of the spawn view: stone basin,
+	-- turquoise water, centre pedestal and spout.
+	local fountain = Instance.new("Folder")
+	fountain.Name = "Fountain"
+	fountain.Parent = world
+	local basin = Instance.new("Part")
+	basin.Name = "FountainBasin"
+	basin.Shape = Enum.PartType.Cylinder
+	basin.Size = Vector3.new(1.4, 8.5, 8.5)
+	basin.Color = Color3.fromRGB(200, 188, 165)
+	basin.Material = Enum.Material.Slate
+	basin.Anchored = true
+	basin.CanCollide = true
+	basin.CFrame = CFrame.new(Vector3.new(0, BEACH_TOP_Y + 0.7, -164.5))
+	basin.Parent = fountain
+	local fwater = Instance.new("Part")
+	fwater.Name = "FountainWater"
+	fwater.Shape = Enum.PartType.Cylinder
+	fwater.Size = Vector3.new(0.7, 7, 7)
+	fwater.Color = Color3.fromRGB(70, 200, 220)
+	fwater.Transparency = 0.3
+	fwater.Anchored = true
+	fwater.CanCollide = false
+	fwater.CFrame = CFrame.new(Vector3.new(0, BEACH_TOP_Y + 1.1, -164.5))
+	fwater.Parent = fountain
+	local pedestal = Instance.new("Part")
+	pedestal.Name = "FountainPedestal"
+	pedestal.Shape = Enum.PartType.Cylinder
+	pedestal.Size = Vector3.new(2.6, 1.3, 1.3)
+	pedestal.Color = Color3.fromRGB(200, 188, 165)
+	pedestal.Material = Enum.Material.Slate
+	pedestal.Anchored = true
+	pedestal.CanCollide = true
+	pedestal.CFrame = CFrame.new(Vector3.new(0, BEACH_TOP_Y + 2.7, -164.5))
+	pedestal.Parent = fountain
+	local bowl = Instance.new("Part")
+	bowl.Name = "FountainBowl"
+	bowl.Shape = Enum.PartType.Cylinder
+	bowl.Size = Vector3.new(0.6, 3, 3)
+	bowl.Color = Color3.fromRGB(200, 188, 165)
+	bowl.Material = Enum.Material.Slate
+	bowl.Anchored = true
+	bowl.CanCollide = false
+	bowl.CFrame = CFrame.new(Vector3.new(0, BEACH_TOP_Y + 4.2, -164.5))
+	bowl.Parent = fountain
+	local spout = Instance.new("Part")
+	spout.Name = "FountainSpout"
+	spout.Shape = Enum.PartType.Ball
+	spout.Size = Vector3.new(0.9, 0.9, 0.9)
+	spout.Color = Color3.fromRGB(120, 220, 240)
+	spout.Transparency = 0.2
+	spout.Anchored = true
+	spout.CanCollide = false
+	spout.Position = Vector3.new(0, BEACH_TOP_Y + 4.9, -164.5)
+	spout.Parent = fountain
+	-- v5: flower clusters at the plaza corners.
+	for _, spot in ipairs({ Vector3.new(-13, 0, -170), Vector3.new(13, 0, -170), Vector3.new(-13, 0, -159), Vector3.new(13, 0, -159) }) do
+		for i, fc in ipairs({ Color3.fromRGB(235, 120, 150), Color3.fromRGB(240, 200, 90), Color3.fromRGB(255, 255, 255) }) do
+			local fl = Instance.new("Part")
+			fl.Name = "PlazaFlower"
+			fl.Shape = Enum.PartType.Ball
+			fl.Size = Vector3.new(0.8, 0.8, 0.8)
+			fl.Color = fc
+			fl.Anchored = true
+			fl.CanCollide = false
+			fl.Position = spot + Vector3.new((i - 2) * 1.0, BEACH_TOP_Y + 0.5, (i % 2) * 0.8)
+			fl.Parent = world
 		end
 	end
 	-- v4: no WELCOME sign — the arch title above is the only greeting;
@@ -985,7 +1268,14 @@ function WorldBuilder.build()
 			baseFolder.Parent = basesFolder
 
 			part("Platform", Vector3.new(30, 1, 30), color, center + Vector3.new(0, -0.5, 0), baseFolder)
-			part("BackWall", Vector3.new(1, 6, 30), Color3.fromRGB(40, 40, 55), center + Vector3.new(side * 14.5, 3, 0), baseFolder)
+			-- v5: warm cream trim framing the platform edge.
+			for _, sx in ipairs({ -1, 1 }) do
+				part("PlatformTrim", Vector3.new(1, 0.2, 30), Color3.fromRGB(250, 235, 205), center + Vector3.new(sx * 14.5, 0.05, 0), baseFolder, Enum.Material.SmoothPlastic, false)
+			end
+			for _, sz in ipairs({ -1, 1 }) do
+				part("PlatformTrim", Vector3.new(30, 0.2, 1), Color3.fromRGB(250, 235, 205), center + Vector3.new(0, 0.05, sz * 14.5), baseFolder, Enum.Material.SmoothPlastic, false)
+			end
+			part("BackWall", Vector3.new(1, 6, 30), Color3.fromRGB(80, 58, 42), center + Vector3.new(side * 14.5, 3, 0), baseFolder, Enum.Material.Wood)
 			-- 18 slot pads (3 rows x 6): 12 unlocked at start, +2 per
 			-- capacity level up to 20. Pads past the current cap are just
 			-- decoration until an upgrade unlocks them.
@@ -993,13 +1283,13 @@ function WorldBuilder.build()
 			for _, rz in ipairs(SLOT_ROWS) do
 				for _, cx in ipairs(SLOT_COLS) do
 					local slotPos = center + Vector3.new(cx, 0.6, rz)
-					part("SlotPad", Vector3.new(3.4, 0.2, 3.4), Color3.fromRGB(255, 255, 255), slotPos, baseFolder, Enum.Material.Neon, false)
+					part("SlotPad", Vector3.new(3.4, 0.2, 3.4), Color3.fromRGB(255, 242, 205), slotPos, baseFolder, Enum.Material.Neon, false)
 					table.insert(slots, slotPos + Vector3.new(0, 0.1, 0))
 				end
 			end
 			-- Green spawn pad on the conveyor-facing edge.
 			local spawnPos = center + Vector3.new(side * -18, 1, 0)
-			part("SpawnPad", Vector3.new(4, 0.2, 4), Color3.fromRGB(120, 255, 140), spawnPos, baseFolder, Enum.Material.Neon, false)
+			part("SpawnPad", Vector3.new(4, 0.2, 4), Color3.fromRGB(140, 230, 150), spawnPos, baseFolder, Enum.Material.Neon, false)
 			local _, signLabel = signBoard(baseFolder, center + Vector3.new(0, 7.5, 0), "BASE " .. index, color, Vector3.new(6, 1.5, 0.4))
 			-- Lock force-field: invisible until the base is locked.
 			local lockField = part("LockField", Vector3.new(30, 8, 30), Color3.fromRGB(90, 160, 255), center + Vector3.new(0, 4, 0), baseFolder, Enum.Material.Neon, false)
@@ -1037,26 +1327,27 @@ function WorldBuilder.build()
 		palmTree(decor, spot, i)
 	end
 
-	marketStall(decor, Vector3.new(-26, 0, -160), Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 255, 255), 1)
-	marketStall(decor, Vector3.new(26, 0, -160), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 255, 255), 2)
-	marketStall(decor, Vector3.new(-26, 0, 172), Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 255, 255), 3)
-	marketStall(decor, Vector3.new(26, 0, 172), Color3.fromRGB(120, 220, 120), Color3.fromRGB(255, 255, 255), 4)
+	marketStall(decor, Vector3.new(-26, 0, -160), Color3.fromRGB(205, 110, 70), Color3.fromRGB(250, 235, 205), 1)
+	marketStall(decor, Vector3.new(26, 0, -160), Color3.fromRGB(130, 165, 200), Color3.fromRGB(250, 235, 205), 2)
+	marketStall(decor, Vector3.new(-26, 0, 172), Color3.fromRGB(230, 185, 95), Color3.fromRGB(250, 235, 205), 3)
+	marketStall(decor, Vector3.new(26, 0, 172), Color3.fromRGB(140, 185, 120), Color3.fromRGB(250, 235, 205), 4)
 	-- v3.5: two more stalls mid-map (X ±26, Z 0 — 3 studs clear of the
 	-- base platforms at X 33, clear of the fences, houses and lamps).
-	marketStall(decor, Vector3.new(-26, 0, 0), Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 255, 255), 5)
-	marketStall(decor, Vector3.new(26, 0, 0), Color3.fromRGB(90, 220, 210), Color3.fromRGB(255, 255, 255), 6)
+	marketStall(decor, Vector3.new(-26, 0, 0), Color3.fromRGB(215, 140, 155), Color3.fromRGB(250, 235, 205), 5)
+	marketStall(decor, Vector3.new(26, 0, 0), Color3.fromRGB(110, 180, 170), Color3.fromRGB(250, 235, 205), 6)
 
 	for _, z in ipairs({ -100, -40, 20, 80, 140 }) do
 		for _, side in ipairs({ -1, 1 }) do
-			part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(50, 50, 60), Vector3.new(side * 10, 3.5, z), decor)
+			part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), Vector3.new(side * 10, 3.5, z), decor)
 			part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), Vector3.new(side * 10, 7.4, z), decor, Enum.Material.Neon, false)
 		end
 	end
 	-- Bunting: little coloured flags strung between the lamp tops.
 	local flagColors = {
-		Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 200, 60),
-		Color3.fromRGB(120, 220, 120), Color3.fromRGB(90, 160, 255),
-		Color3.fromRGB(200, 120, 255),
+		-- v5: muted warm bunting — terracotta, gold, sage, dusty blue, cream.
+		Color3.fromRGB(205, 110, 70), Color3.fromRGB(230, 185, 95),
+		Color3.fromRGB(140, 185, 120), Color3.fromRGB(130, 165, 200),
+		Color3.fromRGB(250, 235, 205),
 	}
 	for _, side in ipairs({ -1, 1 }) do
 		for i = 1, 4 do
@@ -1076,18 +1367,18 @@ function WorldBuilder.build()
 	buildings.Name = "Buildings"
 	buildings.Parent = world
 	-- Town centre by the spawn plaza: a barn and a shop facing the plaza.
-	barn(buildings, Vector3.new(-45, 0, -178), Color3.fromRGB(200, 60, 60), Color3.fromRGB(90, 60, 35), 1)
-	shop(buildings, Vector3.new(45, 0, -178), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1)
+	barn(buildings, Vector3.new(-45, 0, -178), Color3.fromRGB(185, 75, 60), Color3.fromRGB(120, 80, 50), 1)
+	shop(buildings, Vector3.new(45, 0, -178), Color3.fromRGB(250, 225, 170), Color3.fromRGB(198, 102, 62), 1)
 	-- Houses flanking the conveyor, fronts facing the conveyor. At HS 2.5
 	-- they sit at X ±27 so the shallower porches stop a stud short of the
 	-- fences at X ±9; their Z span stays inside the gap between base rows.
-	house(buildings, Vector3.new(-27, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
-	house(buildings, Vector3.new(27, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
-	house(buildings, Vector3.new(-27, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
-	house(buildings, Vector3.new(27, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
+	house(buildings, Vector3.new(-27, 0, -30), Color3.fromRGB(250, 235, 205), Color3.fromRGB(198, 102, 62), 1, 1)
+	house(buildings, Vector3.new(27, 0, -30), Color3.fromRGB(200, 220, 180), Color3.fromRGB(175, 80, 55), -1, 2)
+	house(buildings, Vector3.new(-27, 0, 30), Color3.fromRGB(185, 210, 225), Color3.fromRGB(150, 100, 60), 1, 3)
+	house(buildings, Vector3.new(27, 0, 30), Color3.fromRGB(250, 225, 170), Color3.fromRGB(95, 145, 135), -1, 4)
 	-- Smaller huts further down the conveyor.
-	hut(buildings, Vector3.new(-20, 0, -90), Color3.fromRGB(255, 160, 80), Color3.fromRGB(90, 160, 255), 1, 1)
-	hut(buildings, Vector3.new(20, 0, 90), Color3.fromRGB(140, 220, 255), Color3.fromRGB(200, 60, 60), -1, 2)
+	hut(buildings, Vector3.new(-20, 0, -90), Color3.fromRGB(250, 210, 180), Color3.fromRGB(150, 100, 60), 1, 1)
+	hut(buildings, Vector3.new(20, 0, 90), Color3.fromRGB(200, 220, 180), Color3.fromRGB(198, 102, 62), -1, 2)
 	-- v3.5: the town is denser still — two more two-storey houses by the
 	-- plaza's north end, two more shops and two more huts down the sides,
 	-- so the bay reads as a busy town. New houses at X ±85, Z -170 (their
@@ -1098,12 +1389,12 @@ function WorldBuilder.build()
 	-- clears the tall tree at ±110, the palms at ±75, Z 120, and the
 	-- stalls at ±26, Z 172). All clear of the conveyor, fences, bases
 	-- and the existing buildings.
-	house(buildings, Vector3.new(-85, 0, -170), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1, 5)
-	house(buildings, Vector3.new(85, 0, -170), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), -1, 6)
-	shop(buildings, Vector3.new(-80, 0, -150), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), 2, "FISH SHOP")
-	shop(buildings, Vector3.new(80, 0, -150), Color3.fromRGB(90, 220, 210), Color3.fromRGB(255, 200, 60), 3, "SNACK SHOP")
-	hut(buildings, Vector3.new(-80, 0, 150), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
-	hut(buildings, Vector3.new(80, 0, 150), Color3.fromRGB(255, 200, 60), Color3.fromRGB(200, 60, 60), -1, 4)
+	house(buildings, Vector3.new(-85, 0, -170), Color3.fromRGB(250, 235, 205), Color3.fromRGB(198, 102, 62), 1, 5)
+	house(buildings, Vector3.new(85, 0, -170), Color3.fromRGB(250, 210, 180), Color3.fromRGB(165, 70, 55), -1, 6)
+	shop(buildings, Vector3.new(-80, 0, -150), Color3.fromRGB(185, 210, 225), Color3.fromRGB(95, 145, 135), 2, "FISH SHOP")
+	shop(buildings, Vector3.new(80, 0, -150), Color3.fromRGB(250, 235, 205), Color3.fromRGB(198, 102, 62), 3, "SNACK SHOP")
+	hut(buildings, Vector3.new(-80, 0, 150), Color3.fromRGB(200, 220, 180), Color3.fromRGB(150, 100, 60), 1, 3)
+	hut(buildings, Vector3.new(80, 0, 150), Color3.fromRGB(250, 225, 170), Color3.fromRGB(175, 80, 55), -1, 4)
 	-- Gatehouse over the plaza walkway.
 	gatehouse(buildings, Vector3.new(0, 0, -160))
 
@@ -1128,6 +1419,8 @@ function WorldBuilder.build()
 		Vector3.new(-70, 0, -90), Vector3.new(70, 0, -90),
 		Vector3.new(-70, 0, -30), Vector3.new(70, 0, -30),
 		Vector3.new(-70, 0, 30), Vector3.new(70, 0, 30),
+		-- v5: two layered trees framing the plaza's north side.
+		Vector3.new(-55, 0, -140), Vector3.new(55, 0, -140),
 	}) do
 		roundTree(greenery, spot, i)
 	end
@@ -1183,18 +1476,9 @@ function WorldBuilder.build()
 		bale.Position = spot + Vector3.new(0, BEACH_TOP_Y + 1.1, 0)
 		bale.Parent = props
 	end
-	for _, g in ipairs({
-		{ Vector3.new(-26, 0, -160), Color3.fromRGB(255, 90, 90) },
-		{ Vector3.new(26, 0, -160), Color3.fromRGB(90, 160, 255) },
-		{ Vector3.new(-26, 0, 172), Color3.fromRGB(255, 200, 60) },
-		{ Vector3.new(26, 0, 172), Color3.fromRGB(120, 220, 120) },
-		{ Vector3.new(-26, 0, 0), Color3.fromRGB(200, 120, 255) },
-		{ Vector3.new(26, 0, 0), Color3.fromRGB(90, 220, 210) },
-	}) do
-		part("Goods", Vector3.new(1.5, 1.5, 1.5), g[2], g[1] + Vector3.new(0, 3.1, 0), props, Enum.Material.SmoothPlastic, false)
-	end
+	-- v5: stall goods now live inside marketStall() (fruit + bread per stall).
 	for _, spot in ipairs({ Vector3.new(-14, 0, -168), Vector3.new(14, 0, -168) }) do
-		part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(50, 50, 60), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), props)
+		part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), props)
 		part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), spot + Vector3.new(0, BEACH_TOP_Y + 7.4, 0), props, Enum.Material.Neon, false)
 	end
 	-- v4: the two free-standing MARKET / FRESH BRAINROTS sign posts are
@@ -1326,28 +1610,17 @@ function WorldBuilder.build()
 	local town2 = Instance.new("Folder")
 	town2.Name = "Town2"
 	town2.Parent = world
-	house(town2, Vector3.new(-110, 0, -60), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1, 7)
-	house(town2, Vector3.new(-110, 0, 60), Color3.fromRGB(90, 220, 210), Color3.fromRGB(200, 60, 60), 1, 8)
-	marketStall(town2, Vector3.new(110, 0, -40), Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 255, 255), 10)
-	marketStall(town2, Vector3.new(110, 0, 0), Color3.fromRGB(120, 220, 120), Color3.fromRGB(255, 255, 255), 11)
-	marketStall(town2, Vector3.new(110, 0, 40), Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 255, 255), 12)
-	shop(town2, Vector3.new(110, 0, -80), Color3.fromRGB(255, 140, 200), Color3.fromRGB(90, 220, 210), 5, "TACO STAND")
-	hut(town2, Vector3.new(110, 0, 80), Color3.fromRGB(140, 220, 255), Color3.fromRGB(255, 200, 60), -1, 6)
-	marketStall(town2, Vector3.new(-110, 0, -40), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 255, 255), 13)
-	marketStall(town2, Vector3.new(-110, 0, 40), Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 255, 255), 14)
-	marketStall(town2, Vector3.new(-55, 0, 165), Color3.fromRGB(255, 140, 200), Color3.fromRGB(255, 255, 255), 15)
-	marketStall(town2, Vector3.new(55, 0, 165), Color3.fromRGB(90, 220, 210), Color3.fromRGB(255, 255, 255), 16)
-	for _, g in ipairs({
-		{ Vector3.new(110, 0, -40), Color3.fromRGB(255, 90, 90) },
-		{ Vector3.new(110, 0, 0), Color3.fromRGB(120, 220, 120) },
-		{ Vector3.new(110, 0, 40), Color3.fromRGB(200, 120, 255) },
-		{ Vector3.new(-110, 0, -40), Color3.fromRGB(90, 160, 255) },
-		{ Vector3.new(-110, 0, 40), Color3.fromRGB(255, 200, 60) },
-		{ Vector3.new(-55, 0, 165), Color3.fromRGB(255, 140, 200) },
-		{ Vector3.new(55, 0, 165), Color3.fromRGB(90, 220, 210) },
-	}) do
-		part("Goods", Vector3.new(1.5, 1.5, 1.5), g[2], g[1] + Vector3.new(0, 3.1, 0), town2, Enum.Material.SmoothPlastic, false)
-	end
+	house(town2, Vector3.new(-110, 0, -60), Color3.fromRGB(200, 220, 180), Color3.fromRGB(198, 102, 62), 1, 7)
+	house(town2, Vector3.new(-110, 0, 60), Color3.fromRGB(185, 210, 225), Color3.fromRGB(150, 100, 60), 1, 8)
+	marketStall(town2, Vector3.new(110, 0, -40), Color3.fromRGB(205, 110, 70), Color3.fromRGB(250, 235, 205), 10)
+	marketStall(town2, Vector3.new(110, 0, 0), Color3.fromRGB(140, 185, 120), Color3.fromRGB(250, 235, 205), 11)
+	marketStall(town2, Vector3.new(110, 0, 40), Color3.fromRGB(215, 140, 155), Color3.fromRGB(250, 235, 205), 12)
+	shop(town2, Vector3.new(110, 0, -80), Color3.fromRGB(250, 210, 180), Color3.fromRGB(198, 102, 62), 5, "TACO STAND")
+	hut(town2, Vector3.new(110, 0, 80), Color3.fromRGB(250, 235, 205), Color3.fromRGB(175, 80, 55), -1, 6)
+	marketStall(town2, Vector3.new(-110, 0, -40), Color3.fromRGB(130, 165, 200), Color3.fromRGB(250, 235, 205), 13)
+	marketStall(town2, Vector3.new(-110, 0, 40), Color3.fromRGB(230, 185, 95), Color3.fromRGB(250, 235, 205), 14)
+	marketStall(town2, Vector3.new(-55, 0, 165), Color3.fromRGB(215, 140, 155), Color3.fromRGB(250, 235, 205), 15)
+	marketStall(town2, Vector3.new(55, 0, 165), Color3.fromRGB(110, 180, 170), Color3.fromRGB(250, 235, 205), 16)
 
 	-- v3.6 landmark: a lighthouse on the north-east shore at (200, -155)
 	-- — on the beach just south of the north water band (Z -163..), clear
@@ -1459,9 +1732,9 @@ function WorldBuilder.build()
 		end
 	end
 	local flowerColors = {
-		Color3.fromRGB(255, 90, 140), Color3.fromRGB(255, 200, 60),
-		Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 255, 255),
-		Color3.fromRGB(255, 120, 60),
+		Color3.fromRGB(235, 120, 150), Color3.fromRGB(235, 200, 100),
+		Color3.fromRGB(190, 150, 215), Color3.fromRGB(255, 255, 255),
+		Color3.fromRGB(240, 140, 80),
 	}
 	for bi, spot in ipairs({ Vector3.new(-40, 0, -140), Vector3.new(40, 0, -140), Vector3.new(-40, 0, 165), Vector3.new(40, 0, 165) }) do
 		local soil = Instance.new("Part")
@@ -1487,7 +1760,7 @@ function WorldBuilder.build()
 		end
 	end
 	for _, spot in ipairs({ Vector3.new(-100, 0, -100), Vector3.new(100, 0, -100), Vector3.new(-100, 0, 0), Vector3.new(100, 0, 0), Vector3.new(-100, 0, 100), Vector3.new(100, 0, 100) }) do
-		part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(50, 50, 60), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), decor2)
+		part("LampPole", Vector3.new(0.6, 7, 0.6), Color3.fromRGB(70, 55, 40), spot + Vector3.new(0, BEACH_TOP_Y + 3.5, 0), decor2)
 		part("LampHead", Vector3.new(1.6, 1, 1.6), Color3.fromRGB(255, 240, 160), spot + Vector3.new(0, BEACH_TOP_Y + 7.4, 0), decor2, Enum.Material.Neon, false)
 	end
 	local waveFlags = {}

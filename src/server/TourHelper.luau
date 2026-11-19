@@ -1,7 +1,8 @@
 -- TourHelper: reviewer hooks for make.fun's finalist review (TOUR.json).
 -- grant(amount) gives every player in the server that much money, so a
--- reviewer can reach the shop and rebirth screens at once; wave("go")
--- fires the tsunami immediately. Never used by the game itself.
+-- reviewer can reach the shop and rebirth screens at once; wave("go") fires
+-- the tsunami immediately; golden("go") starts Golden Hour and meteor("go")
+-- starts a meteor shower. Never used by the game itself.
 local State = require(script.Parent.State)
 local Remotes = require(script.Parent.Remotes)
 
@@ -18,6 +19,16 @@ end
 function TourHelper.wave(_arg)
 	local HazardService = require(script.Parent.HazardService)
 	HazardService.triggerWave()
+end
+
+function TourHelper.golden(_arg)
+	local HazardService = require(script.Parent.HazardService)
+	HazardService.triggerGoldenHour()
+end
+
+function TourHelper.meteor(_arg)
+	local HazardService = require(script.Parent.HazardService)
+	HazardService.triggerMeteor()
 end
 
 function TourHelper.spawnLegendary(_arg)

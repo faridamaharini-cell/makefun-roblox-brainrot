@@ -1,91 +1,128 @@
--- BrainrotData: the whole cast of Brainrot Bazaar.
--- 21 absurd characters of our own, on a 7-rung rarity ladder, with mutations
--- that multiply what they earn. Prices and income are the game's economy:
--- a Common pays for itself in ~25 seconds, a Secret costs a rebirth or two.
+-- BrainrotData: the cast of Brainrot Bay.
+-- 32 original bay creatures on a 9-rung rarity ladder, plus 6 mutations.
+--
+-- ECONOMY RULE (do not break this): every character's base income is
+-- floor(price / 40), so a Normal brainrot pays for itself in exactly ~40
+-- seconds at every tier. A mutation multiplier applies EXACTLY ONCE, to
+-- both price and income, inside priceFor / incomeFor. The incomeMult on a
+-- rarity is only a nominal ladder descriptor (used for display / balancing
+-- talk) -- it is NEVER multiplied in again, or income would double-count.
+-- That double-multiplier bug is what sank the v1 economy; keep it out.
+
 local BrainrotData = {}
 
 BrainrotData.Rarities = {
-	{ name = "Common", weight = 40, color = Color3.fromRGB(200, 200, 200), incomeMult = 1 },
-	{ name = "Rare", weight = 25, color = Color3.fromRGB(80, 160, 255), incomeMult = 2.5 },
-	{ name = "Epic", weight = 15, color = Color3.fromRGB(180, 90, 255), incomeMult = 6 },
-	{ name = "Legendary", weight = 10, color = Color3.fromRGB(255, 200, 40), incomeMult = 15 },
-	{ name = "Mythic", weight = 6, color = Color3.fromRGB(255, 80, 120), incomeMult = 35 },
-	{ name = "Brainrot God", weight = 3, color = Color3.fromRGB(60, 230, 220), incomeMult = 80 },
-	{ name = "Secret", weight = 1, color = Color3.fromRGB(140, 255, 90), incomeMult = 200 },
+	{ name = "Common", weight = 40, color = Color3.fromRGB(205, 205, 205), incomeMult = 1 },
+	{ name = "Rare", weight = 25, color = Color3.fromRGB(90, 170, 255), incomeMult = 2.5 },
+	{ name = "Epic", weight = 15, color = Color3.fromRGB(190, 100, 255), incomeMult = 6 },
+	{ name = "Legendary", weight = 10, color = Color3.fromRGB(255, 205, 45), incomeMult = 15 },
+	{ name = "Mythic", weight = 6, color = Color3.fromRGB(255, 85, 125), incomeMult = 35 },
+	{ name = "Divine", weight = 3, color = Color3.fromRGB(70, 235, 225), incomeMult = 80 },
+	{ name = "Cosmic", weight = 2, color = Color3.fromRGB(150, 110, 255), incomeMult = 150 },
+	{ name = "Secret", weight = 1, color = Color3.fromRGB(145, 255, 95), incomeMult = 250 },
+	{ name = "Eternal", weight = 0.5, color = Color3.fromRGB(255, 240, 150), incomeMult = 400 },
 }
 
 BrainrotData.Mutations = {
 	{ name = "Normal", weight = 70, mult = 1, color = Color3.fromRGB(255, 255, 255) },
 	{ name = "Golden", weight = 15, mult = 2, color = Color3.fromRGB(255, 215, 0) },
-	{ name = "Diamond", weight = 10, mult = 5, color = Color3.fromRGB(120, 220, 255) },
-	{ name = "Rainbow", weight = 5, mult = 10, color = Color3.fromRGB(255, 120, 220) },
+	{ name = "Diamond", weight = 10, mult = 5, color = Color3.fromRGB(125, 220, 255) },
+	{ name = "Rainbow", weight = 4, mult = 10, color = Color3.fromRGB(255, 125, 220) },
+	{ name = "Shadow", weight = 0.7, mult = 20, color = Color3.fromRGB(90, 70, 160) },
+	{ name = "Lava", weight = 0.3, mult = 50, color = Color3.fromRGB(255, 90, 30) },
 }
 
--- id, name, rarity, base price, base $/sec, body colour, head colour, accessory
+-- Each row: id, display name, rarity, price, income (= floor(price/40)),
+-- body colour, head colour, accessory.
+-- Price ladder per rung (payback 40s everywhere): Common 40-200, Rare
+-- 400-1200, Epic 2000-6000, Legendary 10000-24000, Mythic 40000-96000,
+-- Divine 160000-300000, Cosmic 480000-800000, Secret 1.2M-1.6M, Eternal 3.2M.
 BrainrotData.Characters = {
-	{ id = "noobini", name = "Noobini the Noodle", rarity = "Common", price = 25, income = 1, body = Color3.fromRGB(255, 220, 130), head = Color3.fromRGB(255, 235, 170), accessory = "hat" },
-	{ id = "croaksalot", name = "Sir Croaksalot", rarity = "Common", price = 50, income = 2, body = Color3.fromRGB(90, 200, 110), head = Color3.fromRGB(120, 220, 140), accessory = "bowtie" },
-	{ id = "pizzaroni", name = "Pizzaroni Supreme", rarity = "Common", price = 100, income = 4, body = Color3.fromRGB(255, 150, 60), head = Color3.fromRGB(255, 190, 90), accessory = "mustache" },
-	{ id = "noodlebeard", name = "Captain Noodlebeard", rarity = "Rare", price = 300, income = 10, body = Color3.fromRGB(120, 170, 255), head = Color3.fromRGB(240, 210, 170), accessory = "hat" },
-	{ id = "pickle", name = "Professor Pickle", rarity = "Rare", price = 500, income = 16, body = Color3.fromRGB(110, 200, 80), head = Color3.fromRGB(150, 220, 110), accessory = "glasses" },
-	{ id = "wombat", name = "DJ Wombat", rarity = "Rare", price = 750, income = 22, body = Color3.fromRGB(150, 110, 80), head = Color3.fromRGB(180, 140, 100), accessory = "antenna" },
-	{ id = "bananaphone", name = "Lord Bananaphone", rarity = "Epic", price = 1500, income = 45, body = Color3.fromRGB(255, 225, 60), head = Color3.fromRGB(255, 240, 120), accessory = "crown" },
-	{ id = "toaster", name = "Grandma Toaster", rarity = "Epic", price = 2500, income = 70, body = Color3.fromRGB(200, 200, 210), head = Color3.fromRGB(220, 220, 230), accessory = "hat" },
-	{ id = "avocado", name = "Agent Avocado", rarity = "Epic", price = 4000, income = 110, body = Color3.fromRGB(90, 180, 90), head = Color3.fromRGB(140, 210, 110), accessory = "glasses" },
-	{ id = "fluffernutter", name = "King Fluffernutter", rarity = "Legendary", price = 8000, income = 220, body = Color3.fromRGB(255, 180, 220), head = Color3.fromRGB(255, 210, 235), accessory = "crown" },
-	{ id = "chocula", name = "Count Chocula Jr.", rarity = "Legendary", price = 12000, income = 320, body = Color3.fromRGB(120, 80, 160), head = Color3.fromRGB(200, 180, 220), accessory = "cape" },
-	{ id = "baguette", name = "Monsieur Baguette", rarity = "Legendary", price = 18000, income = 450, body = Color3.fromRGB(230, 190, 120), head = Color3.fromRGB(245, 215, 150), accessory = "mustache" },
-	{ id = "penguin", name = "Emperor Penguin Supreme", rarity = "Mythic", price = 35000, income = 850, body = Color3.fromRGB(40, 50, 70), head = Color3.fromRGB(240, 240, 240), accessory = "crown" },
-	{ id = "samosa", name = "Sultan Samosa", rarity = "Mythic", price = 50000, income = 1200, body = Color3.fromRGB(255, 170, 40), head = Color3.fromRGB(255, 200, 90), accessory = "cape" },
-	{ id = "bubble", name = "Baron von Bubble", rarity = "Mythic", price = 75000, income = 1750, body = Color3.fromRGB(150, 220, 255), head = Color3.fromRGB(190, 235, 255), accessory = "wings" },
-	{ id = "moonpie", name = "Madame Moonpie", rarity = "Brainrot God", price = 150000, income = 3500, body = Color3.fromRGB(220, 190, 255), head = Color3.fromRGB(240, 220, 255), accessory = "halo" },
-	{ id = "donut", name = "Doctor Donut", rarity = "Brainrot God", price = 220000, income = 5000, body = Color3.fromRGB(255, 150, 180), head = Color3.fromRGB(255, 190, 205), accessory = "halo" },
-	{ id = "frog", name = "Sir Reginald Frog", rarity = "Brainrot God", price = 300000, income = 6800, body = Color3.fromRGB(70, 200, 120), head = Color3.fromRGB(110, 220, 150), accessory = "crown" },
-	{ id = "sock", name = "The Forbidden Sock", rarity = "Secret", price = 600000, income = 14000, body = Color3.fromRGB(90, 90, 110), head = Color3.fromRGB(130, 130, 150), accessory = "wings" },
-	{ id = "sandwich", name = "The Invisible Sandwich", rarity = "Secret", price = 900000, income = 20000, body = Color3.fromRGB(240, 220, 160), head = Color3.fromRGB(250, 240, 200), accessory = "halo" },
-	{ id = "watermelon", name = "Grand Wizard Watermelon", rarity = "Secret", price = 1500000, income = 32000, body = Color3.fromRGB(60, 180, 90), head = Color3.fromRGB(100, 210, 120), accessory = "hat" },
+	-- Common
+	{ id = "splish", name = "Splish the Sardine", rarity = "Common", price = 40, income = 1, body = Color3.fromRGB(150, 200, 235), head = Color3.fromRGB(185, 220, 245), accessory = "hat" },
+	{ id = "barnacle", name = "Barnacle Bob", rarity = "Common", price = 80, income = 2, body = Color3.fromRGB(140, 140, 150), head = Color3.fromRGB(170, 170, 180), accessory = "mustache" },
+	{ id = "kelpy", name = "Kelpy the Kelp Kid", rarity = "Common", price = 120, income = 3, body = Color3.fromRGB(70, 180, 90), head = Color3.fromRGB(110, 205, 120), accessory = "antenna" },
+	{ id = "pebble", name = "Pebble the Crab", rarity = "Common", price = 160, income = 4, body = Color3.fromRGB(235, 90, 70), head = Color3.fromRGB(245, 130, 110), accessory = "bowtie" },
+	{ id = "drippy", name = "Drippy the Droplet", rarity = "Common", price = 200, income = 5, body = Color3.fromRGB(90, 170, 255), head = Color3.fromRGB(140, 200, 255), accessory = "glasses" },
+	-- Rare
+	{ id = "tidepool", name = "Tidepool Terry", rarity = "Rare", price = 400, income = 10, body = Color3.fromRGB(110, 210, 190), head = Color3.fromRGB(150, 230, 215), accessory = "hat" },
+	{ id = "salty", name = "Salty the Seagull", rarity = "Rare", price = 600, income = 15, body = Color3.fromRGB(235, 235, 240), head = Color3.fromRGB(255, 255, 255), accessory = "wings" },
+	{ id = "coral", name = "Coral the Clownfish", rarity = "Rare", price = 800, income = 20, body = Color3.fromRGB(255, 140, 60), head = Color3.fromRGB(255, 175, 110), accessory = "bowtie" },
+	{ id = "anchor", name = "Anchor Andy", rarity = "Rare", price = 1000, income = 25, body = Color3.fromRGB(80, 95, 115), head = Color3.fromRGB(120, 135, 155), accessory = "mustache" },
+	{ id = "bubblegum", name = "Bubblegum Brenda", rarity = "Rare", price = 1200, income = 30, body = Color3.fromRGB(255, 150, 210), head = Color3.fromRGB(255, 185, 225), accessory = "glasses" },
+	-- Epic
+	{ id = "mermike", name = "Mer-Mike the Merman", rarity = "Epic", price = 2000, income = 50, body = Color3.fromRGB(60, 200, 180), head = Color3.fromRGB(100, 220, 200), accessory = "crown" },
+	{ id = "lighthouse", name = "Lighthouse Larry", rarity = "Epic", price = 2800, income = 70, body = Color3.fromRGB(235, 225, 210), head = Color3.fromRGB(250, 245, 230), accessory = "antenna" },
+	{ id = "octavia", name = "Octavia the Octopus", rarity = "Epic", price = 3600, income = 90, body = Color3.fromRGB(180, 110, 220), head = Color3.fromRGB(205, 150, 235), accessory = "cape" },
+	{ id = "surfer", name = "Surfer Sammy", rarity = "Epic", price = 4800, income = 120, body = Color3.fromRGB(255, 200, 80), head = Color3.fromRGB(255, 220, 130), accessory = "glasses" },
+	{ id = "pearl", name = "Pearl the Pufferfish", rarity = "Epic", price = 6000, income = 150, body = Color3.fromRGB(250, 240, 220), head = Color3.fromRGB(255, 250, 240), accessory = "crown" },
+	-- Legendary
+	{ id = "krak", name = "Krak the Kraken", rarity = "Legendary", price = 10000, income = 250, body = Color3.fromRGB(120, 70, 180), head = Color3.fromRGB(155, 105, 210), accessory = "cape" },
+	{ id = "neptune", name = "Neptune Jr.", rarity = "Legendary", price = 14000, income = 350, body = Color3.fromRGB(50, 120, 220), head = Color3.fromRGB(90, 155, 240), accessory = "crown" },
+	{ id = "tidaltina", name = "Tidal Tina", rarity = "Legendary", price = 18000, income = 450, body = Color3.fromRGB(70, 200, 230), head = Color3.fromRGB(110, 220, 245), accessory = "halo" },
+	{ id = "shipwreck", name = "Shipwreck Steve", rarity = "Legendary", price = 24000, income = 600, body = Color3.fromRGB(150, 115, 75), head = Color3.fromRGB(185, 150, 105), accessory = "hat" },
+	-- Mythic
+	{ id = "levi", name = "Levi the Leviathan", rarity = "Mythic", price = 40000, income = 1000, body = Color3.fromRGB(45, 70, 120), head = Color3.fromRGB(80, 105, 160), accessory = "wings" },
+	{ id = "atlantis", name = "Queen Atlantis", rarity = "Mythic", price = 56000, income = 1400, body = Color3.fromRGB(90, 220, 215), head = Color3.fromRGB(130, 235, 230), accessory = "crown" },
+	{ id = "stormsurge", name = "Stormsurge Sally", rarity = "Mythic", price = 72000, income = 1800, body = Color3.fromRGB(100, 110, 200), head = Color3.fromRGB(140, 150, 225), accessory = "cape" },
+	{ id = "abyss", name = "Abyssal Al", rarity = "Mythic", price = 96000, income = 2400, body = Color3.fromRGB(30, 30, 55), head = Color3.fromRGB(60, 60, 95), accessory = "halo" },
+	-- Divine
+	{ id = "poseidon", name = "Poseidon Prime", rarity = "Divine", price = 160000, income = 4000, body = Color3.fromRGB(60, 160, 255), head = Color3.fromRGB(105, 190, 255), accessory = "crown" },
+	{ id = "sirena", name = "Sirena the Songstress", rarity = "Divine", price = 220000, income = 5500, body = Color3.fromRGB(255, 170, 220), head = Color3.fromRGB(255, 200, 235), accessory = "halo" },
+	{ id = "tidalwave", name = "Tidalwave Titan", rarity = "Divine", price = 300000, income = 7500, body = Color3.fromRGB(40, 180, 200), head = Color3.fromRGB(80, 205, 225), accessory = "cape" },
+	-- Cosmic
+	{ id = "moonjelly", name = "Moonjelly the Jellyfish", rarity = "Cosmic", price = 480000, income = 12000, body = Color3.fromRGB(200, 170, 255), head = Color3.fromRGB(220, 200, 255), accessory = "halo" },
+	{ id = "stardust", name = "Stardust Stella", rarity = "Cosmic", price = 640000, income = 16000, body = Color3.fromRGB(255, 230, 140), head = Color3.fromRGB(255, 242, 180), accessory = "crown" },
+	{ id = "galaxycrab", name = "Galaxy Crab", rarity = "Cosmic", price = 800000, income = 20000, body = Color3.fromRGB(130, 80, 220), head = Color3.fromRGB(165, 120, 240), accessory = "wings" },
+	-- Secret
+	{ id = "voidwhale", name = "The Void Whale", rarity = "Secret", price = 1200000, income = 30000, body = Color3.fromRGB(25, 25, 45), head = Color3.fromRGB(55, 55, 85), accessory = "wings" },
+	{ id = "timekeeper", name = "The Tide Timekeeper", rarity = "Secret", price = 1600000, income = 40000, body = Color3.fromRGB(220, 200, 130), head = Color3.fromRGB(240, 225, 170), accessory = "halo" },
+	-- Eternal
+	{ id = "baygod", name = "The Bay Eternal", rarity = "Eternal", price = 3200000, income = 80000, body = Color3.fromRGB(255, 215, 90), head = Color3.fromRGB(255, 235, 150), accessory = "crown" },
 }
 
-function BrainrotData.getRarity(rarityName)
-	for _, r in ipairs(BrainrotData.Rarities) do
-		if r.name == rarityName then
-			return r
-		end
-	end
-	return BrainrotData.Rarities[1]
+-- Fast lookups built once, so getRarity / getMutation / getCharacter are O(1).
+local rarityByName = {}
+for _, rarity in ipairs(BrainrotData.Rarities) do
+	rarityByName[rarity.name] = rarity
 end
 
-function BrainrotData.getMutation(mutationName)
-	for _, m in ipairs(BrainrotData.Mutations) do
-		if m.name == mutationName then
-			return m
-		end
-	end
-	return BrainrotData.Mutations[1]
+local mutationByName = {}
+for _, mutation in ipairs(BrainrotData.Mutations) do
+	mutationByName[mutation.name] = mutation
+end
+
+local characterById = {}
+for _, character in ipairs(BrainrotData.Characters) do
+	characterById[character.id] = character
+end
+
+function BrainrotData.getRarity(name)
+	return rarityByName[name] or BrainrotData.Rarities[1]
+end
+
+function BrainrotData.getMutation(name)
+	return mutationByName[name] or BrainrotData.Mutations[1]
 end
 
 function BrainrotData.getCharacter(id)
-	for _, c in ipairs(BrainrotData.Characters) do
-		if c.id == id then
-			return c
-		end
-	end
-	return nil
+	return characterById[id]
 end
 
+-- Weighted draw over a list whose entries carry a `weight` field.
 local function weightedPick(list)
-	local total = 0
+	local totalWeight = 0
 	for _, entry in ipairs(list) do
-		total += entry.weight
+		totalWeight += entry.weight
 	end
-	local roll = math.random() * total
+	local roll = math.random() * totalWeight
 	for _, entry in ipairs(list) do
 		roll -= entry.weight
 		if roll <= 0 then
 			return entry
 		end
 	end
-	return list[1]
+	return list[#list]
 end
 
 function BrainrotData.rollRarity()
@@ -98,9 +135,9 @@ end
 
 function BrainrotData.rollCharacter(rarityName)
 	local pool = {}
-	for _, c in ipairs(BrainrotData.Characters) do
-		if c.rarity == rarityName then
-			table.insert(pool, c)
+	for _, character in ipairs(BrainrotData.Characters) do
+		if character.rarity == rarityName then
+			table.insert(pool, character)
 		end
 	end
 	if #pool == 0 then
@@ -109,20 +146,26 @@ function BrainrotData.rollCharacter(rarityName)
 	return pool[math.random(1, #pool)]
 end
 
--- Price and income both scale with the mutation multiplier.
+-- Mutation multiplier applies exactly once here. Base price / income are
+-- already rarity-scaled in the table, so no rarity factor is added.
 function BrainrotData.priceFor(def, mutation)
-	return math.floor(def.price * mutation.mult)
+	local mult = mutation and mutation.mult or 1
+	return math.floor(def.price * mult)
 end
 
--- Price and income both scale with the mutation multiplier. Base income is
--- already scaled per rarity in the character table, so no rarity factor here.
+-- Same single application of the mutation multiplier as priceFor.
 function BrainrotData.incomeFor(def, mutation)
-	return math.floor(def.income * mutation.mult)
+	local mult = mutation and mutation.mult or 1
+	return math.floor(def.income * mult)
 end
 
 function BrainrotData.formatMoney(amount)
 	amount = math.floor(amount)
-	if amount >= 1000000 then
+	if amount < 0 then
+		return "-" .. BrainrotData.formatMoney(-amount)
+	elseif amount >= 1000000000 then
+		return string.format("$%.2fB", amount / 1000000000)
+	elseif amount >= 1000000 then
 		return string.format("$%.2fM", amount / 1000000)
 	elseif amount >= 1000 then
 		return string.format("$%.1fK", amount / 1000)

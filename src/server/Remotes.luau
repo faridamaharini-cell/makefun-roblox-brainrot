@@ -1,5 +1,6 @@
--- Remotes: creates the RemoteEvents once, on first require, so init and every
--- service share the same instances. Client waits for these by name.
+-- Remotes: creates every RemoteEvent once, on first require, so init and
+-- all services share the same instances. The client waits for these by name
+-- under ReplicatedStorage/Remotes, so a name change here breaks the HUD.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local folder = ReplicatedStorage:FindFirstChild("Remotes")
@@ -10,6 +11,7 @@ if not folder then
 end
 
 local Remotes = {}
+
 local function getRemote(name)
 	local remote = folder:FindFirstChild(name)
 	if not remote then
@@ -20,14 +22,24 @@ local function getRemote(name)
 	return remote
 end
 
+-- Client -> server actions.
 Remotes.BuyNearest = getRemote("BuyNearest")
 Remotes.LockBase = getRemote("LockBase")
 Remotes.Rebirth = getRemote("Rebirth")
 Remotes.Slap = getRemote("Slap")
-Remotes.Notify = getRemote("Notify")
+Remotes.ClaimQuest = getRemote("ClaimQuest")
+Remotes.UpgradeBase = getRemote("UpgradeBase")
+Remotes.GiftBrainrot = getRemote("GiftBrainrot")
 
+-- Server -> client updates.
+Remotes.Notify = getRemote("Notify")
+Remotes.MoneyUpdate = getRemote("MoneyUpdate")
+Remotes.QuestUpdate = getRemote("QuestUpdate")
+Remotes.UpgradeUpdate = getRemote("UpgradeUpdate")
+Remotes.EventUpdate = getRemote("EventUpdate")
+
+-- kind: "info" | "good" | "bad" | "wave" | "event". A nil player broadcasts.
 function Remotes.notify(player, message, kind)
-	-- kind: "info" | "good" | "bad" | "wave"
 	if player then
 		Remotes.Notify:FireClient(player, message, kind or "info")
 	else

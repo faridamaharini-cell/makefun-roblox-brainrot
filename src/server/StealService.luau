@@ -1,9 +1,10 @@
--- StealService: the threat. Steal a brainrot off a rival's base, carry it home
--- on your head, and bank it on your own base. A locked base can't be stolen
--- from; a slap (F key) knocks a stolen brainrot out of a carrier's hands and
--- sends it straight back to its owner.
+-- StealService: the threat. Steal a brainrot off a rival's unlocked base,
+-- carry it home on your head, and bank it on your own base to make it earn
+-- for you. A locked base can't be stolen from; a slap (F key) knocks a
+-- stolen brainrot out of a carrier's hands and sends it straight home.
 local RunService = game:GetService("RunService")
-local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"))
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
 local State = require(script.Parent.State)
 local BaseService = require(script.Parent.BaseService)
 local Remotes = require(script.Parent.Remotes)
@@ -43,22 +44,18 @@ function StealService.trySteal(player, brainrotId)
 	end
 
 	entry.model:SetAttribute("State", "carried")
-	entry.slotIndex = nil -- frees the owner's slot while it is carried
+	entry.slotIndex = nil -- frees the victim's slot while it is carried
 	data.carrying = brainrotId
 	local prompt = entry.model:FindFirstChild("InteractPrompt", true)
 	if prompt then
 		prompt.Enabled = false
 	end
 	Remotes.notify(player, "You stole " .. entry.def.name .. "! RUN home to your base!", "good")
-	local owner = nil
-	for _, p in pairs(State.players) do
-		if p.player.UserId == entry.ownerId then
-			owner = p.player
+	for _, other in pairs(State.players) do
+		if other.player.UserId == entry.ownerId then
+			Remotes.notify(other.player, player.Name .. " stole your " .. entry.def.name .. "! Slap them (F) to get it back!", "bad")
 			break
 		end
-	end
-	if owner then
-		Remotes.notify(owner, player.Name .. " stole your " .. entry.def.name .. "! Slap them (F) to get it back!", "bad")
 	end
 	return true
 end
@@ -71,10 +68,6 @@ function StealService.returnToOwner(brainrotId)
 	end
 	local slotIndex = BaseService.freeSlotIndex(entry.baseIndex) or 1
 	BaseService.placeInSlot(entry, entry.baseIndex, slotIndex)
-	local prompt = entry.model:FindFirstChild("InteractPrompt", true)
-	if prompt then
-		prompt.Enabled = not State.isBaseLocked(entry.baseIndex)
-	end
 end
 
 function StealService.slap(player)
@@ -105,7 +98,6 @@ function StealService.slap(player)
 				local brainrotId = victim.carrying
 				victim.carrying = nil
 				StealService.returnToOwner(brainrotId)
-				-- Knock the thief backwards.
 				local humanoid = victimChar:FindFirstChildOfClass("Humanoid")
 				if humanoid then
 					local dir = (victimRoot.Position - root.Position).Unit
@@ -135,13 +127,13 @@ function StealService.start()
 				local character = data.player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
 				if not entry or not root then
+					-- Carrier left or died mid-theft: the brainrot goes home.
 					if entry then
 						StealService.returnToOwner(data.carrying)
 					end
 					data.carrying = nil
 				else
-					local pos = root.Position + Vector3.new(0, Config.CarryHeight, 0)
-					entry.model:PivotTo(CFrame.new(pos))
+					entry.model:PivotTo(CFrame.new(root.Position + Vector3.new(0, Config.CarryHeight, 0)))
 					-- Bank it: carrier reached their own base with a free slot.
 					local base = State.bases[data.baseIndex]
 					if base and (root.Position - base.center).Magnitude <= Config.BaseSafeRadius then
@@ -150,9 +142,8 @@ function StealService.start()
 							data.carrying = nil
 							entry.ownerId = data.player.UserId
 							BaseService.placeInSlot(entry, data.baseIndex, slotIndex)
-							-- The steal prompt connection from the original
-							-- registration still points at this brainrotId,
-							-- so it works under the new owner with no re-wire.
+							local QuestService = require(script.Parent.QuestService)
+							QuestService.addProgress(data.player, "steal", 1)
 							Remotes.notify(data.player, "Banked " .. entry.def.name .. "! It now earns for YOU: " .. entry.income .. "/s.", "good")
 						end
 					end

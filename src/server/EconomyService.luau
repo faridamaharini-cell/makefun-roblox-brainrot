@@ -1,21 +1,32 @@
 -- EconomyService: buying brainrots off the conveyor and the money tick.
 -- Every owned brainrot earns its $/sec every second, times the rebirth
--- multiplier; buying checks money, a free slot, and the walker still being
--- on the conveyor.
-local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"))
-local BrainrotData = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("BrainrotData"))
+-- multiplier, the income upgrade and Golden Hour. Buying checks money, a
+-- free slot, and that the walker is still on the conveyor.
+local Workspace = game:GetService("Workspace")
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local BrainrotData = require(Shared:WaitForChild("BrainrotData"))
 local State = require(script.Parent.State)
 local BaseService = require(script.Parent.BaseService)
 local Remotes = require(script.Parent.Remotes)
 
 local EconomyService = {}
 
-local ownedFolder
-
 function EconomyService.start()
-	ownedFolder = Instance.new("Folder")
-	ownedFolder.Name = "OwnedBrainrots"
-	ownedFolder.Parent = game:GetService("Workspace")
+	local folder = Workspace:FindFirstChild("OwnedBrainrots")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "OwnedBrainrots"
+		folder.Parent = Workspace
+	end
+end
+
+local function pushMoney(player)
+	local data = State.getPlayer(player)
+	if not data then
+		return
+	end
+	Remotes.MoneyUpdate:FireClient(player, math.floor(data.money), State.incomePerSecond(player))
 end
 
 function EconomyService.tryBuy(player, brainrotId)
@@ -31,9 +42,13 @@ function EconomyService.tryBuy(player, brainrotId)
 		Remotes.notify(player, "Need " .. BrainrotData.formatMoney(walker.price) .. " for " .. walker.def.name .. " — you have " .. BrainrotData.formatMoney(data.money), "bad")
 		return false
 	end
+	if data.baseIndex == 0 then
+		Remotes.notify(player, "You don't have a base yet — wait a moment and try again.", "bad")
+		return false
+	end
 	local slotIndex = BaseService.freeSlotIndex(data.baseIndex)
 	if not slotIndex then
-		Remotes.notify(player, "Your base is full! Sell or rebirth to make room.", "bad")
+		Remotes.notify(player, "Your base is full! Upgrade capacity or rebirth to make room.", "bad")
 		return false
 	end
 
@@ -50,11 +65,15 @@ function EconomyService.tryBuy(player, brainrotId)
 		slotIndex = slotIndex,
 	}
 	State.owned[brainrotId] = entry
-	walker.model.Parent = ownedFolder
 	BaseService.placeInSlot(entry, data.baseIndex, slotIndex)
+
 	local StealService = require(script.Parent.StealService)
 	StealService.registerPrompt(entry, brainrotId)
+	local QuestService = require(script.Parent.QuestService)
+	QuestService.addProgress(player, "buy", 1)
+
 	Remotes.notify(player, "Bought " .. walker.def.name .. " (" .. walker.mutation.name .. ") for " .. BrainrotData.formatMoney(walker.price) .. " — earns " .. BrainrotData.formatMoney(walker.income) .. "/s!", "good")
+	pushMoney(player)
 	return true
 end
 
@@ -71,8 +90,7 @@ function EconomyService.nearestWalker(player, maxDistance)
 	local best = nil
 	local bestDist = maxDistance
 	for id, walker in pairs(State.walkers) do
-		local pos = walker.model:GetPivot().Position
-		local dist = (pos - root.Position).Magnitude
+		local dist = (walker.model:GetPivot().Position - root.Position).Magnitude
 		if dist < bestDist then
 			bestDist = dist
 			best = id
@@ -81,12 +99,17 @@ function EconomyService.nearestWalker(player, maxDistance)
 	return best
 end
 
--- One money tick: every owned brainrot pays its $/sec into its owner's pocket.
+-- One money tick: every owned brainrot pays its $/sec into its owner's
+-- pocket, leaderstats and the HUD are refreshed, and "earn" quest progress
+-- accrues (QuestUpdate only fires from addProgress on completion, so the
+-- per-second earn flow stays quiet on the network).
 function EconomyService.tick()
+	local QuestService = require(script.Parent.QuestService)
 	for _, data in pairs(State.players) do
 		local income = State.incomePerSecond(data.player)
 		if income > 0 then
-			data.money += income
+			data.money += income * Config.TickInterval
+			QuestService.addProgress(data.player, "earn", income * Config.TickInterval)
 		end
 		local leaderstats = data.player:FindFirstChild("leaderstats")
 		if leaderstats then
@@ -103,6 +126,7 @@ function EconomyService.tick()
 				rebirthValue.Value = data.rebirths
 			end
 		end
+		pushMoney(data.player)
 	end
 	BaseService.refreshLocks()
 end

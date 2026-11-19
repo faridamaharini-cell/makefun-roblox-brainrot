@@ -1,8 +1,14 @@
--- Brainrot Bazaar server entry point: builds the world, wires the services,
+-- Brainrot Bay server entry point: builds the island, wires the services,
 -- and owns the player lifecycle (join, spawn at your base, leave).
+-- Service wiring: BuyNearest / LockBase / Rebirth / Slap are connected here;
+-- ClaimQuest, UpgradeBase and GiftBrainrot are connected inside their own
+-- services' start() so each service owns exactly one remote.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"))
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+
 local WorldBuilder = require(script.WorldBuilder)
 local State = require(script.State)
 local Remotes = require(script.Remotes)
@@ -12,6 +18,9 @@ local SpawnService = require(script.SpawnService)
 local StealService = require(script.StealService)
 local RebirthService = require(script.RebirthService)
 local HazardService = require(script.HazardService)
+local QuestService = require(script.QuestService)
+local UpgradeService = require(script.UpgradeService)
+local GiftService = require(script.GiftService)
 
 -- Build the world first: bases must exist before any player is assigned one.
 State.bases = WorldBuilder.build()
@@ -19,6 +28,9 @@ EconomyService.start()
 SpawnService.start()
 StealService.start()
 HazardService.start()
+QuestService.start()
+UpgradeService.start()
+GiftService.start()
 
 local function setupLeaderstats(player, data)
 	local leaderstats = Instance.new("Folder")
@@ -59,7 +71,8 @@ local function onPlayerAdded(player)
 	State.players[player.UserId] = data
 	setupLeaderstats(player, data)
 	BaseService.assignBase(player)
-	Remotes.notify(player, "Welcome to BRAINROT BAZAAR! Buy brainrots off the conveyor, bank them on your base, and watch out for thieves and tsunamis!", "info")
+	QuestService.sendBoard(player)
+	Remotes.notify(player, "Welcome to BRAINROT BAY! Buy brainrots off the conveyor, bank them on your base, and watch out for thieves, tsunamis and meteors!", "info")
 	player.CharacterAdded:Connect(function(character)
 		onCharacterAdded(player, character)
 	end)
@@ -77,6 +90,16 @@ local function onPlayerRemoving(player)
 	if data.carrying then
 		StealService.returnToOwner(data.carrying)
 		data.carrying = nil
+	end
+	-- Free the base for the next player.
+	if data.baseIndex ~= 0 then
+		local base = State.bases[data.baseIndex]
+		if base and base.ownerUserId == player.UserId then
+			base.ownerUserId = nil
+			if base.signLabel then
+				base.signLabel.Text = "BASE " .. base.index
+			end
+		end
 	end
 	State.players[player.UserId] = nil
 end
@@ -120,11 +143,13 @@ RunService.Heartbeat:Connect(function(_dt)
 			local base = State.bases[entry.baseIndex]
 			if base and entry.slotIndex then
 				local slotPos = base.slots[entry.slotIndex]
-				local bob = math.sin(now * 2 + id) * 0.2
-				entry.model:PivotTo(CFrame.new(slotPos + Vector3.new(0, 0.1 + bob, 0)))
+				if slotPos then
+					local bob = math.sin(now * 2 + id) * 0.2
+					entry.model:PivotTo(CFrame.new(slotPos + Vector3.new(0, 0.1 + bob, 0)))
+				end
 			end
 		end
 	end
 end)
 
-print("Brainrot Bazaar server ready: " .. #State.bases .. " bases, conveyor live.")
+print("Brainrot Bay server ready: " .. #State.bases .. " bases, conveyor live, Golden Hour and meteor showers armed.")

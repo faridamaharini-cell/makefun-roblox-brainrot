@@ -1,38 +1,61 @@
--- Brainrot Bazaar shared tuning: one place for every number the game runs on,
--- so server and client agree on costs, timers and world size.
-local Config = {}
+-- Brainrot Bay shared tuning.
+-- Every number the island runs on lives in this one table, so the server and
+-- the client always agree on world size, timers, costs and event cycles.
+-- World layout: the conveyor runs along Z from ConveyorStartZ to
+-- ConveyorEndZ; its length (300) is exactly EndZ - StartZ. Bases sit in two
+-- rows of five flanking the conveyor, ten bases total.
 
-Config.MaxBases = 8
-Config.SlotsPerBase = 10
-Config.ConveyorLength = 260
-Config.ConveyorWidth = 14
-Config.ConveyorStartZ = -125
-Config.ConveyorEndZ = 128
+local Config = {
+	-- World and bases
+	MaxBases = 10,
+	SlotsPerBase = 12,
+	ConveyorLength = 300,
+	ConveyorWidth = 14,
+	ConveyorStartZ = -145,
+	ConveyorEndZ = 155,
 
-Config.WalkerSpeed = 5
-Config.MaxWalkers = 8
-Config.SpawnInterval = 4
-Config.TickInterval = 1
+	-- Conveyor walkers
+	WalkerSpeed = 5,
+	MaxWalkers = 10,
+	SpawnInterval = 3.5,
+	TickInterval = 1,
 
-Config.LockDuration = 30
-Config.LockCooldown = 120
-Config.SlapCooldown = 3
-Config.SlapRange = 10
-Config.BuyRange = 14
-Config.BaseSafeRadius = 15
-Config.CarryHeight = 6
+	-- Combat and interaction
+	LockDuration = 30,
+	LockCooldown = 120,
+	SlapCooldown = 3,
+	SlapRange = 10,
+	BuyRange = 14,
+	BaseSafeRadius = 15,
+	CarryHeight = 6,
 
-Config.WaveCycle = 90 -- seconds of calm between waves
-Config.WaveWarning = 15 -- seconds of warning before the wave hits
-Config.WaveSpeed = 45 -- studs per second the wall sweeps
-Config.WaveWidth = 340
+	-- Tsunami wave event
+	WaveCycle = 90,
+	WaveWarning = 15,
+	WaveSpeed = 45,
+	WaveWidth = 340,
 
-Config.StartingMoney = 100
+	-- Starting cash
+	StartingMoney = 100,
 
+	-- Golden Hour event (double income while active)
+	GoldenHourCycle = 240,
+	GoldenHourDuration = 60,
+
+	-- Meteor shower event (bonus spawns while active)
+	MeteorCycle = 180,
+	MeteorDuration = 45,
+
+	-- Gifting
+	GiftRange = 20,
+}
+
+-- Rebirth n costs 50,000 * 2^n. First rebirth is 50,000, second 100,000, ...
 function Config.rebirthCost(rebirths)
 	return 50000 * (2 ^ rebirths)
 end
 
+-- Each rebirth doubles all income: multiplier is 2^n.
 function Config.rebirthMultiplier(rebirths)
 	return 2 ^ rebirths
 end

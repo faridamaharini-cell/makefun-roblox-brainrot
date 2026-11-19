@@ -52,23 +52,6 @@ local function makeBall(name, diameter, color, parent, material)
 	return ball
 end
 
--- A vertical cylinder: a Cylinder part's length axis is X, so rotate the
--- CFrame 90 degrees about Z to stand it upright. Used for the torso and
--- limbs so the characters read as rounded creatures, not square boxes.
-local function makeCylinder(name, diameter, length, color, position, parent, material)
-	local part = Instance.new("Part")
-	part.Name = name
-	part.Shape = Enum.PartType.Cylinder
-	part.Size = Vector3.new(length, diameter, diameter)
-	part.Color = color
-	part.Material = material or Enum.Material.SmoothPlastic
-	part.Anchored = true
-	part.CanCollide = false
-	part.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
-	part.Parent = parent
-	return part
-end
-
 -- One builder per accessory kind. Each receives the model, the head part and
 -- the character definition; positions are relative to the head centre.
 local AccessoryBuilders = {}
@@ -92,7 +75,7 @@ end
 
 AccessoryBuilders.cape = function(model, head, _def)
 	local cape = makeBox("Cape", Vector3.new(2.9, 3.4, 0.25), Color3.fromRGB(165, 30, 45), model, Enum.Material.Fabric)
-	cape.Position = head.Position + Vector3.new(0, -1.7, -1.55)
+	cape.Position = head.Position + Vector3.new(0, -1.7, -1.15)
 end
 
 AccessoryBuilders.glasses = function(model, head, _def)
@@ -141,11 +124,11 @@ end
 AccessoryBuilders.bowtie = function(model, head, _def)
 	for _, side in ipairs({ -1, 1 }) do
 		local knot = makeBox("Bowtie", Vector3.new(0.95, 0.6, 0.2), Color3.fromRGB(205, 30, 55), model)
-		knot.Position = head.Position + Vector3.new(side * 0.55, -2.35, 1.45)
+		knot.Position = head.Position + Vector3.new(side * 0.55, -2.35, 1.1)
 		knot.CFrame = CFrame.new(knot.Position) * CFrame.Angles(0, 0, side * 0.65)
 	end
 	local centre = makeBox("BowtieKnot", Vector3.new(0.4, 0.4, 0.25), Color3.fromRGB(205, 30, 55), model)
-	centre.Position = head.Position + Vector3.new(0, -2.35, 1.45)
+	centre.Position = head.Position + Vector3.new(0, -2.35, 1.1)
 end
 
 local function makeLabel(name, text, textColor, positionY, parent)
@@ -189,55 +172,57 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 	local model = Instance.new("Model")
 	model.Name = def.name
 
-	-- Torso (vertical cylinder, diameter 2.8, height 2.6, centre y 2.5)
-	-- is the PrimaryPart. Feet stay at model y 0, pivot at y 2.5.
-	local body = makeCylinder("Body", 2.8, 2.6, bodyColor, Vector3.new(0, 2.5, 0), model)
+	-- Torso (2.8 x 2.6 x 2 box, centre y 2.5) is the PrimaryPart, like a
+	-- Roblox avatar's torso. Feet stay at model y 0, pivot at y 2.5.
+	local body = makeBox("Body", Vector3.new(2.8, 2.6, 2), bodyColor, model)
+	body.Position = Vector3.new(0, 2.5, 0)
 	if bodyNeon then
 		body.Material = Enum.Material.Neon
 	end
 	model.PrimaryPart = body
 
-	-- Head (ball, diameter 2.4, centre y 4.6) sits on the torso.
-	local head = makeBall("Head", 2.4, headColor, model)
+	-- Head (2.2 cube, centre y 4.6) sits on the torso, like a Roblox
+	-- avatar's head. Its +Z face is at Z 1.1.
+	local head = makeBox("Head", Vector3.new(2.2, 2, 2.2), headColor, model)
 	head.Position = Vector3.new(0, 4.6, 0)
 
-	-- Eyes on the +Z face of the round head, with dark pupils. Pushed
-	-- slightly out (Z 1.15/1.19) so they sit on the ball's surface.
+	-- Eyes on the +Z face of the head, with dark pupils. The face plane
+	-- is at Z 1.1, so the eyes (0.12 thick, centred at 1.12) and pupils
+	-- (centred at 1.16) poke out just past it.
 	for _, offsetX in ipairs({ -0.55, 0.55 }) do
 		local eye = makeBox("Eye", Vector3.new(0.55, 0.65, 0.12), Color3.fromRGB(255, 255, 255), model)
-		eye.Position = Vector3.new(offsetX, 4.75, 1.15)
+		eye.Position = Vector3.new(offsetX, 4.75, 1.12)
 		local pupil = makeBox("Pupil", Vector3.new(0.28, 0.34, 0.12), Color3.fromRGB(20, 20, 20), model)
-		pupil.Position = Vector3.new(offsetX, 4.7, 1.19)
+		pupil.Position = Vector3.new(offsetX, 4.7, 1.16)
 	end
 
-	-- Smile: a small dark mouth below the eyes, sitting on the ball's
-	-- surface (at Y -0.55 the ball's cross-section radius is ~1.07, so
-	-- the 0.12-thick mouth pokes out to Z 1.14). The face reads human now.
+	-- Smile: a small dark mouth below the eyes, on the face plane.
 	local mouth = makeBox("Mouth", Vector3.new(0.9, 0.25, 0.12), Color3.fromRGB(20, 20, 20), model)
 	mouth.Position = Vector3.new(0, 4.05, 1.08)
 
-	-- Hair: a flattened ball cap on the top/back of the head, leaving the
-	-- face open. Only when the accessory does not already cover the top
-	-- of the head (hat, crown, antenna and halo sit up there instead).
+	-- Hair, Roblox style: a flat box cap on top of the head plus a thin
+	-- back panel down the back of the head, leaving the face open. Only
+	-- when the accessory does not already cover the top of the head (hat,
+	-- crown, antenna and halo sit up there instead). The head top is at
+	-- Y 5.7, so the cap (0.6 thick) sits centred at 6.0.
 	local TOP_ACCESSORIES = { hat = true, crown = true, antenna = true, halo = true }
 	if not TOP_ACCESSORIES[def.accessory] then
-		local hair = Instance.new("Part")
-		hair.Name = "Hair"
-		hair.Shape = Enum.PartType.Ball
-		hair.Size = Vector3.new(2.6, 1.5, 2.6)
-		hair.Color = Color3.fromRGB(45, 30, 20)
-		hair.Anchored = true
-		hair.CanCollide = false
-		hair.Position = head.Position + Vector3.new(0, 0.7, -0.3)
-		hair.Parent = model
+		local hairColor = Color3.fromRGB(45, 30, 20)
+		local cap = makeBox("Hair", Vector3.new(2.4, 0.6, 2.4), hairColor, model)
+		cap.Position = head.Position + Vector3.new(0, 1.4, 0)
+		local back = makeBox("HairBack", Vector3.new(2.4, 1.6, 0.3), hairColor, model)
+		back.Position = head.Position + Vector3.new(0, 0.4, -1.2)
 	end
 
-	-- Arms and legs under the torso, as cylinders like the body. The legs
-	-- are longer (2.0, centred at Y 1.0) for human proportions, emerging
-	-- from under the torso; feet stay at model y 0, Body centre at 2.5.
+	-- Arms at the torso sides and legs under the torso, as boxes like a
+	-- Roblox avatar. The legs are longer (2.0, centred at Y 1.0) for
+	-- human proportions, emerging from under the torso; feet stay at
+	-- model y 0, Body centre at 2.5.
 	for _, side in ipairs({ -1, 1 }) do
-		makeCylinder("Arm", 0.7, 2.0, bodyColor, Vector3.new(side * 1.75, 2.5, 0), model)
-		makeCylinder("Leg", 0.9, 2.0, Color3.fromRGB(60, 60, 70), Vector3.new(side * 0.65, 1.0, 0), model)
+		local arm = makeBox("Arm", Vector3.new(0.7, 2.0, 0.7), bodyColor, model)
+		arm.Position = Vector3.new(side * 1.75, 2.5, 0)
+		local leg = makeBox("Leg", Vector3.new(0.9, 2.0, 0.9), Color3.fromRGB(60, 60, 70), model)
+		leg.Position = Vector3.new(side * 0.65, 1.0, 0)
 	end
 
 	local buildAccessory = AccessoryBuilders[def.accessory]

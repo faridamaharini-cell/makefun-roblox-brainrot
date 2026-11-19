@@ -10,6 +10,8 @@
 -- v3.4: the houses are two-storey and taller (HS 2.5), six tall trees sway
 -- at the map edges, and ambient animals (a cow, a pig, a chicken, two
 -- birds) wander and orbit — one cheap animation loop drives them all.
+-- v3.5: the town is denser (two more houses, two more shops, two more
+-- huts, two more stalls) and the animals are 2x bigger.
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
@@ -251,7 +253,7 @@ end
 
 -- A market shop: big display window, door, striped awning, sign board,
 -- pitched roof (ridge along X) and chimney. The front faces +Z.
-local function shop(parent, pos, wallColor, roofColor, index)
+local function shop(parent, pos, wallColor, roofColor, index, name)
 	local s = Instance.new("Folder")
 	s.Name = "Shop" .. index
 	s.Parent = parent
@@ -265,7 +267,7 @@ local function shop(parent, pos, wallColor, roofColor, index)
 	part("ShopWindowGlass", Vector3.new(4.1 * BS, 2.2 * BS, 0.26 * BS), Color3.fromRGB(150, 210, 255), Vector3.new(pos.X + 2 * BS, baseY + 3.4 * BS, faceZ + 0.14 * BS), s, Enum.Material.Glass, false)
 	xWindow(s, pos.X + W / 2, baseY + 3.6 * BS, pos.Z, 1)
 	xWindow(s, pos.X - W / 2, baseY + 3.6 * BS, pos.Z, -1)
-	signBoard(s, Vector3.new(pos.X, baseY + 5.8 * BS, faceZ + 0.4 * BS), "TIDE SHOP", Color3.fromRGB(255, 220, 80), Vector3.new(8 * BS, 2.5 * BS, 0.4 * BS))
+	signBoard(s, Vector3.new(pos.X, baseY + 5.8 * BS, faceZ + 0.4 * BS), name or "TIDE SHOP", Color3.fromRGB(255, 220, 80), Vector3.new(8 * BS, 2.5 * BS, 0.4 * BS))
 	local ridgeY = baseY + H + 3 * BS
 	pitchedRoof(s, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1 * BS, 3 * BS, W + 1 * BS, roofColor, "X")
 	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X + 3 * BS, ridgeY - 1 * BS, pos.Z + 2 * BS), s, Enum.Material.SmoothPlastic)
@@ -772,6 +774,10 @@ function WorldBuilder.build()
 	marketStall(decor, Vector3.new(26, 0, -160), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 255, 255), 2)
 	marketStall(decor, Vector3.new(-26, 0, 172), Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 255, 255), 3)
 	marketStall(decor, Vector3.new(26, 0, 172), Color3.fromRGB(120, 220, 120), Color3.fromRGB(255, 255, 255), 4)
+	-- v3.5: two more stalls mid-map (X ±26, Z 0 — 3 studs clear of the
+	-- base platforms at X 33, clear of the fences, houses and lamps).
+	marketStall(decor, Vector3.new(-26, 0, 0), Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 255, 255), 5)
+	marketStall(decor, Vector3.new(26, 0, 0), Color3.fromRGB(90, 220, 210), Color3.fromRGB(255, 255, 255), 6)
 
 	for _, z in ipairs({ -100, -40, 20, 80, 140 }) do
 		for _, side in ipairs({ -1, 1 }) do
@@ -815,6 +821,22 @@ function WorldBuilder.build()
 	-- Smaller huts further down the conveyor.
 	hut(buildings, Vector3.new(-20, 0, -90), Color3.fromRGB(255, 160, 80), Color3.fromRGB(90, 160, 255), 1, 1)
 	hut(buildings, Vector3.new(20, 0, 90), Color3.fromRGB(140, 220, 255), Color3.fromRGB(200, 60, 60), -1, 2)
+	-- v3.5: the town is denser still — two more two-storey houses by the
+	-- plaza's north end, two more shops and two more huts down the sides,
+	-- so the bay reads as a busy town. New houses at X ±85, Z -170 (their
+	-- X span -97.5..-72.5 clears the barn at -57.6..-32.4 and the tall
+	-- tree at -110); new shops at X ±80, Z -150 (fronts face +Z, toward
+	-- the town; X span 70.1..89.9 clears the tall tree at ±110 and the
+	-- palms at ±75, Z -120); new huts at X ±80, Z 150 (X span 72.8..87.2
+	-- clears the tall tree at ±110, the palms at ±75, Z 120, and the
+	-- stalls at ±26, Z 172). All clear of the conveyor, fences, bases
+	-- and the existing buildings.
+	house(buildings, Vector3.new(-85, 0, -170), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1, 5)
+	house(buildings, Vector3.new(85, 0, -170), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), -1, 6)
+	shop(buildings, Vector3.new(-80, 0, -150), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), 2, "FISH SHOP")
+	shop(buildings, Vector3.new(80, 0, -150), Color3.fromRGB(90, 220, 210), Color3.fromRGB(255, 200, 60), 3, "SNACK SHOP")
+	hut(buildings, Vector3.new(-80, 0, 150), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
+	hut(buildings, Vector3.new(80, 0, 150), Color3.fromRGB(255, 200, 60), Color3.fromRGB(200, 60, 60), -1, 4)
 	-- Gatehouse over the plaza walkway.
 	gatehouse(buildings, Vector3.new(0, 0, -160))
 
@@ -899,6 +921,8 @@ function WorldBuilder.build()
 		{ Vector3.new(26, 0, -160), Color3.fromRGB(90, 160, 255) },
 		{ Vector3.new(-26, 0, 172), Color3.fromRGB(255, 200, 60) },
 		{ Vector3.new(26, 0, 172), Color3.fromRGB(120, 220, 120) },
+		{ Vector3.new(-26, 0, 0), Color3.fromRGB(200, 120, 255) },
+		{ Vector3.new(26, 0, 0), Color3.fromRGB(90, 220, 210) },
 	}) do
 		part("Goods", Vector3.new(1.5, 1.5, 1.5), g[2], g[1] + Vector3.new(0, 3.1, 0), props, Enum.Material.SmoothPlastic, false)
 	end
@@ -934,8 +958,11 @@ function WorldBuilder.build()
 	end
 
 	-- v3.4: ambient animals, purely decorative — no prompt, no gameplay.
-	-- Ground animals wander a small patch of open beach; two birds orbit
-	-- high above the map. All clear of the conveyor and the bases.
+	-- v3.5: they are BIG now (2x, ScaleTo around the PrimaryPart, so the
+	-- feet drop to -2*pivotY below the pivot and the loop's Y uses the
+	-- doubled pivotY). Ground animals wander a small patch of open beach;
+	-- two birds orbit high above the map. All clear of the conveyor and
+	-- the bases.
 	local animalsFolder = Instance.new("Folder")
 	animalsFolder.Name = "Animals"
 	animalsFolder.Parent = world
@@ -946,6 +973,8 @@ function WorldBuilder.build()
 		{ buildChicken, Vector3.new(55, 0, -145), 6, 0.16, 4.2 },
 	}) do
 		local model, pivotY = spec[1]()
+		model:ScaleTo(2)
+		pivotY = pivotY * 2
 		model.Parent = animalsFolder
 		table.insert(wanderers, {
 			model = model,
@@ -962,12 +991,20 @@ function WorldBuilder.build()
 		{ Color3.fromRGB(245, 245, 245), math.pi },
 	}) do
 		local model, wings = buildBird(spec[1])
+		model:ScaleTo(2)
+		-- The loop overwrites the wing CFrames every tick from attach /
+		-- centre, so those must be doubled too (ScaleTo already scaled
+		-- the wing parts themselves).
+		for _, wing in ipairs(wings) do
+			wing.attach = wing.attach * 2
+			wing.centre = wing.centre * 2
+		end
 		model.Parent = animalsFolder
 		table.insert(orbiters, {
 			model = model,
 			wings = wings,
-			centre = Vector3.new(0, 45, 5),
-			radius = 70,
+			centre = Vector3.new(0, 55, 5),
+			radius = 90,
 			speed = 0.15,
 			phase = spec[2],
 		})

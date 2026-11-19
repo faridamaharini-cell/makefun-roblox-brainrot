@@ -26,7 +26,10 @@ local BASE_COLORS = {
 }
 
 local BASE_Z = { -120, -60, 0, 60, 120 }
-local SLOT_COLS = { -11, -6.6, -2.2, 2.2, 6.6, 11 }
+-- Slot columns: spaced 5.0 apart (was 4.4) so the 2.0x creatures (5.6-wide
+-- bodies) overlap less; the outer pads end at X ±14.2, still inside the
+-- 30-wide platform (half-width 15). Rows stay 8 apart.
+local SLOT_COLS = { -12.5, -7.5, -2.5, 2.5, 7.5, 12.5 }
 local SLOT_ROWS = { -8, 0, 8 }
 
 -- Top of the sand beach. The project baseplate's top is at Y=0, so the

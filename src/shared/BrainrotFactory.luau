@@ -7,12 +7,12 @@ local BrainrotData = require(script.Parent.BrainrotData)
 
 local BrainrotFactory = {}
 
--- Characters are built big: MODEL_SCALE 1.5 makes the ~5.7-stud character
--- ~8.6 studs tall, so they read as big creatures next to the player (like
+-- Characters are built big: MODEL_SCALE 2.0 makes the ~5.7-stud character
+-- ~11.4 studs tall, so they read as big creatures next to the player (like
 -- the Rot Ranch animals). The model pivot is the Body centre, which sits
 -- 2.5 studs above the feet before scaling, so callers must place the pivot
 -- PIVOT_ABOVE_FEET above the surface they stand on.
-BrainrotFactory.MODEL_SCALE = 1.5
+BrainrotFactory.MODEL_SCALE = 2.0
 BrainrotFactory.PIVOT_ABOVE_FEET = 2.5 * BrainrotFactory.MODEL_SCALE
 
 -- Per-mutation tint overrides. Normal keeps the character's own colours.

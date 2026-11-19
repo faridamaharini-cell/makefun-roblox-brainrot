@@ -19,7 +19,7 @@ local BrainrotData = require(Shared:WaitForChild("BrainrotData"))
 local Config = require(Shared:WaitForChild("Config"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local Quests = require(Shared:WaitForChild("Quests"))
-local HUD = require(script:WaitForChild("HUD"))
+local HUD = require(script.Parent:WaitForChild("HUD"))
 
 local remotesFolder = ReplicatedStorage:WaitForChild("Remotes")
 

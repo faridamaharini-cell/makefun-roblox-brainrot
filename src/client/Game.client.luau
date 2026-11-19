@@ -1,88 +1,146 @@
--- A square that moves with the arrow keys inside a grey box.
-
+-- Brainrot Bazaar client: HUD wiring, keybinds and toasts.
+-- Movement stays on Roblox's own controls (WASD / arrow keys). Our actions
+-- use ContextActionService so they never fight the camera scripts: E buys
+-- the nearest brainrot, F slaps a thief, L locks your base, R rebirths.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BrainrotData = require(Shared:WaitForChild("BrainrotData"))
+local Config = require(Shared:WaitForChild("Config"))
+local HUD = require(script.HUD)
 
-local ARENA_WIDTH = 640
-local ARENA_HEIGHT = 480
-local SQUARE_SIZE = 48
-local SPEED = 320 -- pixels per second
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local buyNearest = remotes:WaitForChild("BuyNearest")
+local lockBase = remotes:WaitForChild("LockBase")
+local rebirth = remotes:WaitForChild("Rebirth")
+local slap = remotes:WaitForChild("Slap")
+local notify = remotes:WaitForChild("Notify")
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "GameGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
+local hud = HUD.build(player)
 
-local background = Instance.new("Frame")
-background.Name = "Background"
-background.Size = UDim2.fromScale(1, 1)
-background.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-background.BorderSizePixel = 0
-background.Parent = gui
-
-local title = Instance.new("TextLabel")
-title.Name = "Hint"
-title.AnchorPoint = Vector2.new(0.5, 0)
-title.Position = UDim2.new(0.5, 0, 0.5, -ARENA_HEIGHT / 2 - 56)
-title.Size = UDim2.fromOffset(ARENA_WIDTH, 40)
-title.BackgroundTransparency = 1
-title.Text = "Use the arrow keys to move the square"
-title.TextColor3 = Color3.fromRGB(230, 230, 230)
-title.TextSize = 24
-title.Font = Enum.Font.SourceSans
-title.Parent = background
-
-local arena = Instance.new("Frame")
-arena.Name = "Arena"
-arena.AnchorPoint = Vector2.new(0.5, 0.5)
-arena.Position = UDim2.fromScale(0.5, 0.5)
-arena.Size = UDim2.fromOffset(ARENA_WIDTH, ARENA_HEIGHT)
-arena.BackgroundColor3 = Color3.fromRGB(110, 110, 110)
-arena.BorderColor3 = Color3.fromRGB(30, 30, 30)
-arena.BorderSizePixel = 2
-arena.Parent = background
-
-local square = Instance.new("Frame")
-square.Name = "Square"
-square.Size = UDim2.fromOffset(SQUARE_SIZE, SQUARE_SIZE)
-square.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-square.BorderColor3 = Color3.fromRGB(30, 30, 30)
-square.BorderSizePixel = 2
-square.Parent = arena
-
--- The square's top-left corner inside the arena, starting in the middle.
-local x = (ARENA_WIDTH - SQUARE_SIZE) / 2
-local y = (ARENA_HEIGHT - SQUARE_SIZE) / 2
-
-local function place()
-	square.Position = UDim2.fromOffset(math.floor(x + 0.5), math.floor(y + 0.5))
+local toastUntil = 0
+local function showToast(message, kind)
+	local color = Color3.fromRGB(255, 255, 255)
+	if kind == "good" then
+		color = Color3.fromRGB(120, 255, 140)
+	elseif kind == "bad" then
+		color = Color3.fromRGB(255, 100, 100)
+	elseif kind == "wave" then
+		color = Color3.fromRGB(90, 180, 255)
+	end
+	hud.toastLabel.Text = message
+	hud.toastLabel.TextColor3 = color
+	toastUntil = os.clock() + 4
 end
 
-place()
-gui.Parent = player:WaitForChild("PlayerGui")
+notify.OnClientEvent:Connect(showToast)
 
+-- Keep the toast visible for 4 seconds, then clear it.
+RunService.RenderStepped:Connect(function()
+	if hud.toastLabel.Text ~= "" and os.clock() > toastUntil then
+		hud.toastLabel.Text = ""
+	end
+end)
+
+-- Money / income / rebirth readout from leaderstats.
+local leaderstats = player:WaitForChild("leaderstats")
+local moneyValue = leaderstats:WaitForChild("Money")
+local incomeValue = leaderstats:WaitForChild("Income")
+local rebirthValue = leaderstats:WaitForChild("Rebirths")
+
+local function refreshMoney()
+	hud.moneyLabel.Text = BrainrotData.formatMoney(moneyValue.Value)
+	local mult = Config.rebirthMultiplier(rebirthValue.Value)
+	hud.incomeLabel.Text = "+" .. BrainrotData.formatMoney(incomeValue.Value) .. "/s  •  Rebirth x" .. mult .. "  •  Next rebirth: " .. BrainrotData.formatMoney(Config.rebirthCost(rebirthValue.Value))
+end
+moneyValue:GetPropertyChangedSignal("Value"):Connect(refreshMoney)
+incomeValue:GetPropertyChangedSignal("Value"):Connect(refreshMoney)
+rebirthValue:GetPropertyChangedSignal("Value"):Connect(refreshMoney)
+refreshMoney()
+
+-- Buttons do exactly what the keys do.
+hud.lockButton.MouseButton1Click:Connect(function()
+	lockBase:FireServer()
+end)
+hud.rebirthButton.MouseButton1Click:Connect(function()
+	rebirth:FireServer()
+end)
+
+local function bindAction(name, key, remote)
+	ContextActionService:BindAction(name, function(_actionName, inputState, _inputObject)
+		if inputState == Enum.UserInputState.Begin then
+			remote:FireServer()
+		end
+	end, false, key)
+end
+bindAction("BuyNearest", Enum.KeyCode.E, buyNearest)
+bindAction("SlapThief", Enum.KeyCode.F, slap)
+bindAction("LockBase", Enum.KeyCode.L, lockBase)
+bindAction("Rebirth", Enum.KeyCode.R, rebirth)
+
+-- Context line: name, rarity, price and income of the nearest brainrot.
+local function nearestBrainrotModel(maxDistance)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil, math.huge
+	end
+	local best = nil
+	local bestDist = maxDistance
+	for _, folder in ipairs({ game:GetService("Workspace"):FindFirstChild("Walkers"), game:GetService("Workspace"):FindFirstChild("OwnedBrainrots") }) do
+		if folder then
+			for _, model in ipairs(folder:GetChildren()) do
+				if model:IsA("Model") then
+					local dist = (model:GetPivot().Position - root.Position).Magnitude
+					if dist < bestDist then
+						bestDist = dist
+						best = model
+					end
+				end
+			end
+		end
+	end
+	return best, bestDist
+end
+
+local scanAccumulator = 0
 RunService.RenderStepped:Connect(function(dt)
-	local dx = 0
-	local dy = 0
-	if UserInputService:IsKeyDown(Enum.KeyCode.Left) then
-		dx -= 1
-	end
-	if UserInputService:IsKeyDown(Enum.KeyCode.Right) then
-		dx += 1
-	end
-	if UserInputService:IsKeyDown(Enum.KeyCode.Up) then
-		dy -= 1
-	end
-	if UserInputService:IsKeyDown(Enum.KeyCode.Down) then
-		dy += 1
-	end
-	if dx == 0 and dy == 0 then
+	scanAccumulator += dt
+	if scanAccumulator < 0.25 then
 		return
 	end
-	x = math.clamp(x + dx * SPEED * dt, 0, ARENA_WIDTH - SQUARE_SIZE)
-	y = math.clamp(y + dy * SPEED * dt, 0, ARENA_HEIGHT - SQUARE_SIZE)
-	place()
+	scanAccumulator = 0
+	local model, dist = nearestBrainrotModel(16)
+	if not model then
+		hud.contextLabel.Text = "Walk up to a brainrot on the conveyor — press E to buy it!"
+		return
+	end
+	local defId = model:GetAttribute("DefId")
+	local def = defId and BrainrotData.getCharacter(defId)
+	local state = model:GetAttribute("State")
+	if not def then
+		return
+	end
+	local rarity = BrainrotData.getRarity(def.rarity)
+	local line = def.name .. "  •  " .. rarity.name .. " " .. (model:GetAttribute("Mutation") or "")
+	if state == "walking" then
+		line ..= "  •  " .. BrainrotData.formatMoney(model:GetAttribute("Price") or 0) .. "  •  " .. BrainrotData.formatMoney(model:GetAttribute("Income") or 0) .. "/s  •  Press E to BUY"
+	elseif state == "owned" then
+		local ownerId = model:GetAttribute("OwnerUserId")
+		if ownerId == player.UserId then
+			line ..= "  •  YOURS  •  " .. BrainrotData.formatMoney(model:GetAttribute("Income") or 0) .. "/s"
+		else
+			line ..= "  •  Hold E near it to STEAL (if the base is unlocked!)"
+		end
+	elseif state == "carried" then
+		line ..= "  •  BEING CARRIED — slap the thief with F!"
+	end
+	_ = dist
+	hud.contextLabel.Text = line
 end)
+
+print("Brainrot Bazaar client ready.")

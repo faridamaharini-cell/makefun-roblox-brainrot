@@ -5,7 +5,8 @@
 -- UserInputService.InputBegan with gameProcessedEvent, because the
 -- camera scripts swallow arrow keys and processed input: E buys the
 -- nearest brainrot, F slaps a thief, L locks your base, R rebirths,
--- Q claims the current quest, G gifts a brainrot to a friend.
+-- Q claims the current quest, G gifts a brainrot to a friend, and B
+-- opens the Baydex index.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
@@ -50,6 +51,7 @@ local moneyUpdate = waitRemote("MoneyUpdate")
 local questUpdate = waitRemote("QuestUpdate")
 local upgradeUpdate = waitRemote("UpgradeUpdate")
 local eventUpdate = waitRemote("EventUpdate")
+local indexUpdate = waitRemote("IndexUpdate")
 
 local function fire(remote, ...)
 	if remote then
@@ -108,10 +110,12 @@ local function refreshQuestBoard(board)
 		return
 	end
 	local current = nil
-	for _, quest in ipairs(Quests.Quests) do
+	local currentIndex = nil
+	for boardIndex, quest in ipairs(Quests.Quests) do
 		local entry = board[quest.id]
 		if entry and not entry.claimed then
 			current = { quest = quest, entry = entry }
+			currentIndex = boardIndex
 			if (entry.progress or 0) < quest.target then
 				break
 			end
@@ -119,11 +123,11 @@ local function refreshQuestBoard(board)
 	end
 	if not current then
 		currentQuestId = nil
-		HUD.setQuest("All quests complete!", 0, 1, true)
+		HUD.setQuest("All quests complete!", 0, 1, true, nil, #Quests.Quests)
 		return
 	end
 	currentQuestId = current.quest.id
-	HUD.setQuest(current.quest.title, current.entry.progress, current.quest.target, current.entry.claimed)
+	HUD.setQuest(current.quest.title, current.entry.progress, current.quest.target, current.entry.claimed, currentIndex, #Quests.Quests)
 end
 
 local function claimCurrentQuest()
@@ -136,6 +140,12 @@ end
 
 if questUpdate then
 	questUpdate.OnClientEvent:Connect(refreshQuestBoard)
+end
+
+if indexUpdate then
+	indexUpdate.OnClientEvent:Connect(function(found)
+		HUD.setIndex(found)
+	end)
 end
 
 if upgradeUpdate then
@@ -192,6 +202,11 @@ if eventUpdate then
 end
 
 -- Buttons do exactly what the keys do.
+if HUD.indexButton then
+	HUD.indexButton.MouseButton1Click:Connect(function()
+		HUD.toggleIndex()
+	end)
+end
 if HUD.claimButton then
 	HUD.claimButton.MouseButton1Click:Connect(function()
 		claimCurrentQuest()
@@ -239,6 +254,9 @@ bindKey("BrainrotBayClaimQuest", Enum.KeyCode.Q, function()
 end)
 bindKey("BrainrotBayGift", Enum.KeyCode.G, function()
 	fire(giftBrainrot)
+end)
+bindKey("BrainrotBayIndex", Enum.KeyCode.B, function()
+	HUD.toggleIndex()
 end)
 
 -- Nearest-brainrot scan: name, rarity, mutation, price, income and the

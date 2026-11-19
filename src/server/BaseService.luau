@@ -82,6 +82,14 @@ function BaseService.placeInSlot(entry, baseIndex, slotIndex)
 		prompt.ObjectText = entry.def.name
 		prompt.Enabled = not State.isBaseLocked(baseIndex)
 	end
+	-- Banking a brainrot on a base marks its def as found in the owner's
+	-- Baydex. This one spot covers buy, gift received and steal banked,
+	-- because all three bank through here; return-to-owner re-marks a def
+	-- the owner already found, which markFound ignores.
+	local ownerData = State.players[entry.ownerId]
+	if ownerData then
+		State.markFound(ownerData.player, entry.def.id)
+	end
 end
 
 function BaseService.lockBase(player)

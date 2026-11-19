@@ -37,6 +37,7 @@ Remotes.MoneyUpdate = getRemote("MoneyUpdate")
 Remotes.QuestUpdate = getRemote("QuestUpdate")
 Remotes.UpgradeUpdate = getRemote("UpgradeUpdate")
 Remotes.EventUpdate = getRemote("EventUpdate")
+Remotes.IndexUpdate = getRemote("IndexUpdate")
 
 -- kind: "info" | "good" | "bad" | "wave" | "event". A nil player broadcasts.
 function Remotes.notify(player, message, kind)

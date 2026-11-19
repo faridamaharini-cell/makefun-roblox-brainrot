@@ -18,18 +18,21 @@ Buy brainrots off the conveyor, fill your base, and watch the money tick up. The
 - **R — Rebirth:** reset your money and brainrots for a permanent x2 income multiplier per rebirth.
 - **Q — Claim quest:** claim the reward for the quest shown in the left-hand tracker.
 - **G — Gift:** gift a brainrot to a friend standing nearby.
+- **B — Baydex:** open the Brainrot Index to see which of the 32 characters you have found.
 - **Steal:** grab a brainrot off a rival's unlocked base, carry it home on your head, and bank it on your own base. If a tsunami hits while you are carrying one, you get flung and drop it.
 
 ## What is in the game
 
 - **The cast:** 32 original characters across 9 rarities, from Common all the way to Secret. Every character is built from Parts in code — no asset IDs, so nothing fails to load.
 - **6 mutations:** characters can arrive Normal, Golden, Diamond, Rainbow, and two rarer forms, each multiplying what they earn.
-- **Quests:** a quest tracker on the left of the screen follows goals like your first buy, your earnings, steals, slaps, and surviving a wave, with a Claim button (or **Q**) when one is done.
+- **Quests:** a GOALS ladder on the left of the screen follows 8 goals like your first buy, your earnings, steals, slaps, and surviving a wave, showing "NEXT GOAL n/8" with a Claim button (or **Q**) when one is done.
+- **Baydex:** press **B** (or the Baydex button, top-right) to open the Brainrot Index — all 32 characters with an "X/32 FOUND" counter, "???" silhouettes for ones you haven't found yet, rarity colours, and a one-line flavor note for each character you own. Found brainrots survive rebirth.
 - **Base upgrades:** three buttons bottom-right — Capacity (more brainrot slots), Income (a boost to what your base earns), and Lock (a stronger, cheaper lock) — each showing its price.
 - **Gifting:** press **G** near a friend to hand them one of your brainrots.
 - **Events:** a tsunami sweeps the bay every 90 seconds with a countdown banner; Golden Hour doubles everyone's income for a while; a Meteor Shower rains bonus chaos across the map. The banner at the top of the screen always shows what is live and how long is left.
-- **Rebirths:** each rebirth doubles your income forever, so the late game is about timing the reset.
-- **The HUD:** money and income top-right, quest tracker on the left, event banner top-centre, toast messages for buys, steals, waves and rewards, and a context line at the bottom that tells you exactly what the nearest brainrot costs, earns, and whether you can buy, steal, or slap for it.
+- **Rebirths:** each rebirth doubles your income forever, so the late game is about timing the reset. Your first rebirth unlocks Poseidon Tier and adds a gold pedestal to your base — one more pedestal per rebirth.
+- **The HUD:** big money and income display top-centre (with the "BRAINROT BAY" title), GOALS ladder on the left, event banner below the money panel, toast messages for buys, steals, waves and rewards, and a context line at the bottom that tells you exactly what the nearest brainrot costs, earns, and whether you can buy, steal, or slap for it.
+- **Economy:** every brainrot pays for itself in exactly ~40 seconds at every tier (Normal mutation).
 
 ## How it is built
 

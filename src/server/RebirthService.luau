@@ -35,6 +35,37 @@ function RebirthService.tryRebirth(player)
 
 	data.money = Config.StartingMoney
 	data.rebirths += 1
+	-- Poseidon Tier: one small gold pedestal per rebirth, parented into
+	-- the player's base folder near the base sign (back edge, z +13, clear
+	-- of the slot pads). Four pedestals fit in a row before wrapping to a
+	-- second row 4 studs further back, so rebirths 5-8 never land on the
+	-- same spot as 1-4.
+	local base = State.bases[data.baseIndex]
+	if base and base.folder then
+		local n = data.rebirths
+		local pedestal = Instance.new("Part")
+		pedestal.Name = "PoseidonPedestal" .. n
+		pedestal.Shape = Enum.PartType.Cylinder
+		-- Round in the horizontal plane: with the 90-degree Z-rotation
+		-- the cylinder stands upright, so Size.x is its height and
+		-- Size.y == Size.z is its diameter (3). Height 3 with the
+		-- centre 1.5 above base.center (y=1) puts its base flush on
+		-- the platform top.
+		pedestal.Size = Vector3.new(3, 3, 3)
+		pedestal.Color = Color3.fromRGB(255, 205, 60)
+		pedestal.Material = Enum.Material.Neon
+		pedestal.Anchored = true
+		pedestal.CanCollide = true
+		pedestal.TopSurface = Enum.SurfaceType.Smooth
+		pedestal.BottomSurface = Enum.SurfaceType.Smooth
+		pedestal.CFrame = CFrame.new(base.center + Vector3.new((((n - 1) % 4) * 3.5) - 5.25, 1.5, 13 + math.floor((n - 1) / 4) * 4)) * CFrame.Angles(0, 0, math.rad(90))
+		pedestal.Parent = base.folder
+	end
+	if data.rebirths == 1 then
+		Remotes.notify(player, "POSEIDON TIER UNLOCKED — +1 pedestal on your base!", "event")
+	else
+		Remotes.notify(player, "Poseidon Tier " .. data.rebirths .. " — another gold pedestal on your base!", "event")
+	end
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
 		local rebirthValue = leaderstats:FindFirstChild("Rebirths")

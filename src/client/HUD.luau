@@ -1,7 +1,8 @@
 -- Brainrot Bay HUD.
 -- Builds the whole interface in code as a single ScreenGui: money and
--- income top-right (clear of the top-left Roblox menu buttons), the quest
--- tracker on the left, the event banner top-centre, toasts underneath it,
+-- income TOP-CENTRE and large (clear of the top-left Roblox menu buttons),
+-- the GOALS ladder on the left, the event banner below the money panel,
+-- toasts underneath the banner, the Baydex index panel (B key / button),
 -- a context line bottom-centre, upgrade buttons bottom-right, and the
 -- controls reminder bottom-left. All text is large and TextScaled so it
 -- stays readable when the game is shown scaled down in a thumbnail or
@@ -9,12 +10,17 @@
 -- The module keeps the built instances internally; Game.client.luau calls
 -- the setters below as server RemoteEvents arrive.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BrainrotData = require(Shared:WaitForChild("BrainrotData"))
+
 local HUD = {}
 
 local gui = nil
 local moneyLabel = nil
 local incomeLabel = nil
 local rebirthsLabel = nil
+local questHeaderLabel = nil
 local questTitleLabel = nil
 local questBarFill = nil
 local questProgressLabel = nil
@@ -22,8 +28,13 @@ local eventBanner = nil
 local eventLabel = nil
 local toastList = nil
 local contextLabel = nil
+local indexFrame = nil
+local indexHeaderLabel = nil
+local indexList = nil
+local foundSet = {}
 
 HUD.claimButton = nil
+HUD.indexButton = nil
 HUD.upgradeButtons = {}
 
 -- Level-0 costs from Shared.Economy.upgradeCost(kind, 0): capacity
@@ -129,26 +140,35 @@ function HUD.build(player)
 	gui.DisplayOrder = 10
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Money panel, top-right, clear of the top-left menu buttons.
+	-- Money panel, TOP-CENTRE and large so it reads at thumbnail scale,
+	-- clear of the top-left Roblox menu buttons. The event banner sits
+	-- below it (see below) so the two never overlap.
 	local moneyFrame = makePanel(
 		"MoneyFrame",
 		gui,
-		UDim2.new(0, 330, 0, 148),
-		UDim2.new(1, -346, 0, 12),
+		UDim2.new(0, 460, 0, 180),
+		UDim2.new(0.5, 0, 0, 8),
 		Color3.fromRGB(18, 24, 40),
 		0.15
 	)
-	makeLabel("TitleLabel", moneyFrame, "BRAINROT BAY", UDim2.new(1, -16, 0, 26), UDim2.new(0, 8, 0, 6), 22, Color3.fromRGB(255, 215, 80))
-	moneyLabel = makeLabel("MoneyLabel", moneyFrame, "$100", UDim2.new(1, -16, 0, 48), UDim2.new(0, 8, 0, 32), 40, Color3.fromRGB(120, 255, 140))
-	incomeLabel = makeLabel("IncomeLabel", moneyFrame, "+$0/s", UDim2.new(1, -16, 0, 28), UDim2.new(0, 8, 0, 84), 24, Color3.fromRGB(255, 220, 90))
-	rebirthsLabel = makeLabel("RebirthsLabel", moneyFrame, "Rebirths: 0  •  x1 income", UDim2.new(1, -16, 0, 26), UDim2.new(0, 8, 0, 114), 22, Color3.fromRGB(140, 220, 255))
+	moneyFrame.AnchorPoint = Vector2.new(0.5, 0)
+	makeLabel("TitleLabel", moneyFrame, "BRAINROT BAY", UDim2.new(1, -16, 0, 28), UDim2.new(0, 8, 0, 6), 24, Color3.fromRGB(255, 215, 80))
+	moneyLabel = makeLabel("MoneyLabel", moneyFrame, "$100", UDim2.new(1, -16, 0, 56), UDim2.new(0, 8, 0, 34), 56, Color3.fromRGB(120, 255, 140))
+	incomeLabel = makeLabel("IncomeLabel", moneyFrame, "+$0/s", UDim2.new(1, -16, 0, 32), UDim2.new(0, 8, 0, 94), 30, Color3.fromRGB(255, 220, 90))
+	rebirthsLabel = makeLabel("RebirthsLabel", moneyFrame, "Rebirths: 0  •  x1 income", UDim2.new(1, -16, 0, 28), UDim2.new(0, 8, 0, 130), 24, Color3.fromRGB(140, 220, 255))
 
-	-- Event banner, top-centre, hidden until an event is live.
+	-- Baydex button, LEFT side under the quest frame (quest frame is at
+	-- (16,148), 340x168, so it ends at y=316; y=324 clears it). Left
+	-- side keeps it clear of the centred event banner (y 198-254) at
+	-- every viewport width, including narrow ones.
+	HUD.indexButton = makeButton("BaydexButton", gui, "Baydex (B)", UDim2.new(0, 160, 0, 44), UDim2.new(0, 16, 0, 324), Color3.fromRGB(40, 90, 160))
+
+	-- Event banner, below the money panel, hidden until an event is live.
 	eventBanner = makePanel(
 		"EventBanner",
 		gui,
 		UDim2.new(0, 620, 0, 56),
-		UDim2.new(0.5, -310, 0, 12),
+		UDim2.new(0.5, -310, 0, 198),
 		Color3.fromRGB(20, 60, 120),
 		0.1
 	)
@@ -159,7 +179,7 @@ function HUD.build(player)
 	toastList = Instance.new("Frame")
 	toastList.Name = "ToastList"
 	toastList.AnchorPoint = Vector2.new(0.5, 0)
-	toastList.Position = UDim2.new(0.5, 0, 0, 78)
+	toastList.Position = UDim2.new(0.5, 0, 0, 262)
 	toastList.Size = UDim2.new(0, 660, 0, 190)
 	toastList.BackgroundTransparency = 1
 	toastList.Parent = gui
@@ -179,7 +199,8 @@ function HUD.build(player)
 		Color3.fromRGB(18, 24, 40),
 		0.15
 	)
-	makeLabel("QuestHeader", questFrame, "QUEST", UDim2.new(1, -16, 0, 24), UDim2.new(0, 8, 0, 8), 20, Color3.fromRGB(255, 215, 80))
+	makeLabel("QuestHeader", questFrame, "GOALS", UDim2.new(1, -16, 0, 24), UDim2.new(0, 8, 0, 8), 20, Color3.fromRGB(255, 215, 80))
+	questHeaderLabel = questFrame:FindFirstChild("QuestHeader")
 	questTitleLabel = makeLabel("QuestTitle", questFrame, "No quest yet", UDim2.new(1, -16, 0, 44), UDim2.new(0, 8, 0, 34), 24, Color3.fromRGB(255, 255, 255))
 	local barBack = Instance.new("Frame")
 	barBack.Name = "QuestBarBack"
@@ -241,12 +262,47 @@ function HUD.build(player)
 	makeLabel(
 		"HelpLabel",
 		gui,
-		"Move: WASD / Arrows  •  E: Buy  •  F: Slap  •  L: Lock  •  R: Rebirth  •  Q: Quest  •  G: Gift",
-		UDim2.new(0, 620, 0, 28),
+		"Move: WASD / Arrows  •  E: Buy  •  F: Slap  •  L: Lock  •  R: Rebirth  •  Q: Quest  •  G: Gift  •  B: Baydex",
+		UDim2.new(0, 780, 0, 28),
 		UDim2.new(0, 16, 1, -40),
 		18,
 		Color3.fromRGB(230, 230, 230)
 	)
+
+	-- Baydex (Brainrot Index) panel, centre screen, hidden until opened
+	-- with B or the Baydex button. One row per character in BrainrotData
+	-- order; found rows show name, rarity colour, flavor and price/income,
+	-- unfound rows show only "???" in grey with the rarity colour.
+	indexFrame = makePanel(
+		"BaydexFrame",
+		gui,
+		UDim2.new(0, 560, 0, 520),
+		UDim2.new(0.5, -280, 0.5, -260),
+		Color3.fromRGB(18, 24, 40),
+		0.05
+	)
+	indexFrame.Visible = false
+	indexHeaderLabel = makeLabel("BaydexHeader", indexFrame, "BAYDEX — 0/32 FOUND", UDim2.new(1, -70, 0, 30), UDim2.new(0, 12, 0, 8), 24, Color3.fromRGB(255, 215, 80))
+	local closeButton = makeButton("BaydexCloseButton", indexFrame, "X", UDim2.new(0, 44, 0, 36), UDim2.new(1, -56, 0, 6), Color3.fromRGB(180, 60, 60))
+	closeButton.MouseButton1Click:Connect(function()
+		HUD.toggleIndex()
+	end)
+	indexList = Instance.new("ScrollingFrame")
+	indexList.Name = "BaydexList"
+	indexList.Size = UDim2.new(1, -16, 1, -56)
+	indexList.Position = UDim2.new(0, 8, 0, 46)
+	indexList.BackgroundTransparency = 1
+	indexList.BorderSizePixel = 0
+	indexList.ScrollBarThickness = 6
+	indexList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	indexList.CanvasSize = UDim2.new(0, 0, 0, 0)
+	indexList.Parent = indexFrame
+	local indexLayout = Instance.new("UIListLayout")
+	indexLayout.FillDirection = Enum.FillDirection.Vertical
+	indexLayout.Padding = UDim.new(0, 4)
+	indexLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	indexLayout.Parent = indexList
+	HUD.rebuildIndex()
 
 	return HUD
 end
@@ -261,16 +317,32 @@ function HUD.setMoney(money, incomePerSecond)
 	end
 end
 
--- Rebirth count; the multiplier shown is x2 per rebirth.
+-- Rebirth count; the multiplier shown is x2 per rebirth. From the first
+-- rebirth on, the line reads POSEIDON TIER instead of "Rebirths".
 function HUD.setRebirths(count)
 	if rebirthsLabel then
 		local n = math.floor(count or 0)
-		rebirthsLabel.Text = "Rebirths: " .. tostring(n) .. "  •  x" .. tostring(2 ^ n) .. " income"
+		if n >= 1 then
+			rebirthsLabel.Text = "POSEIDON TIER  •  x" .. tostring(2 ^ n) .. " income"
+		else
+			rebirthsLabel.Text = "Rebirths: 0  •  x1 income"
+		end
 	end
 end
 
--- Quest tracker: title, progress bar, counter, and the claim button state.
-function HUD.setQuest(title, progress, target, claimed)
+-- GOALS ladder: title, progress bar, counter, and the claim button state.
+-- boardIndex is the current goal's 1-based position on the 8-goal board
+-- (nil when every goal is done); the header shows NEXT GOAL n/8, or
+-- GOALS — 8/8 COMPLETE when the ladder is finished.
+function HUD.setQuest(title, progress, target, claimed, boardIndex, totalGoals)
+	local total = math.max(math.floor(totalGoals or 8), 1)
+	if questHeaderLabel then
+		if boardIndex == nil then
+			questHeaderLabel.Text = "GOALS — " .. total .. "/" .. total .. " COMPLETE"
+		else
+			questHeaderLabel.Text = "GOALS — NEXT GOAL " .. tostring(boardIndex) .. "/" .. total
+		end
+	end
 	if questTitleLabel then
 		questTitleLabel.Text = title or "No quest yet"
 	end
@@ -296,6 +368,71 @@ function HUD.setQuest(title, progress, target, claimed)
 			HUD.claimButton.BackgroundColor3 = Color3.fromRGB(70, 70, 85)
 			HUD.claimButton.Active = true
 		end
+	end
+end
+
+-- Baydex: rebuild the row list from foundSet. Found rows show the name,
+-- rarity colour, flavor line and price/income; unfound rows show "???"
+-- in grey with only the rarity colour (no name, no flavor, no price).
+function HUD.rebuildIndex()
+	if not indexList or not indexHeaderLabel then
+		return
+	end
+	for _, child in ipairs(indexList:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local foundCount = 0
+	for _, character in ipairs(BrainrotData.Characters) do
+		local found = foundSet[character.id] == true
+		if found then
+			foundCount += 1
+		end
+		local rarity = BrainrotData.getRarity(character.rarity)
+		local row = Instance.new("Frame")
+		row.Name = "Row_" .. character.id
+		row.Size = UDim2.new(1, -6, 0, 58)
+		row.BackgroundColor3 = Color3.fromRGB(30, 36, 56)
+		row.BorderSizePixel = 0
+		row.Parent = indexList
+		local rowCorner = Instance.new("UICorner")
+		rowCorner.CornerRadius = UDim.new(0, 8)
+		rowCorner.Parent = row
+		local stripe = Instance.new("Frame")
+		stripe.Name = "RarityStripe"
+		stripe.Size = UDim2.new(0, 8, 1, 0)
+		stripe.Position = UDim2.new(0, 0, 0, 0)
+		stripe.BackgroundColor3 = rarity.color
+		stripe.BorderSizePixel = 0
+		stripe.Parent = row
+		if found then
+			makeLabel("RowName", row, character.name, UDim2.new(1, -170, 0, 24), UDim2.new(0, 18, 0, 2), 20, Color3.fromRGB(255, 255, 255))
+			makeLabel("RowRarity", row, character.rarity, UDim2.new(0, 140, 0, 24), UDim2.new(1, -150, 0, 2), 20, rarity.color)
+			makeLabel("RowFlavor", row, character.flavor or "", UDim2.new(1, -170, 0, 24), UDim2.new(0, 18, 0, 28), 18, Color3.fromRGB(200, 205, 220))
+			makeLabel("RowStats", row, BrainrotData.formatMoney(character.price) .. "  •  " .. BrainrotData.formatMoney(character.income) .. "/s", UDim2.new(0, 140, 0, 24), UDim2.new(1, -150, 0, 28), 18, Color3.fromRGB(120, 255, 140))
+		else
+			makeLabel("RowName", row, "???", UDim2.new(1, -170, 0, 24), UDim2.new(0, 18, 0, 2), 20, Color3.fromRGB(150, 150, 150))
+			makeLabel("RowRarity", row, character.rarity, UDim2.new(0, 140, 0, 24), UDim2.new(1, -150, 0, 2), 20, rarity.color)
+		end
+	end
+	indexHeaderLabel.Text = "BAYDEX — " .. tostring(foundCount) .. "/" .. tostring(#BrainrotData.Characters) .. " FOUND"
+end
+
+-- New found set from the server (IndexUpdate remote); rebuilds the panel.
+function HUD.setIndex(found)
+	if typeof(found) == "table" then
+		foundSet = found
+	else
+		foundSet = {}
+	end
+	HUD.rebuildIndex()
+end
+
+-- Show / hide the Baydex panel.
+function HUD.toggleIndex()
+	if indexFrame then
+		indexFrame.Visible = not indexFrame.Visible
 	end
 end
 

@@ -7,6 +7,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Economy = require(Shared:WaitForChild("Economy"))
+local Remotes = require(script.Parent.Remotes)
 
 local State = {}
 
@@ -35,6 +36,7 @@ function State.newPlayerData(player)
 		carrying = nil, -- brainrotId being carried home, or nil
 		quests = {}, -- [questId] = { progress, claimed }
 		upgrades = { capacity = 0, income = 0, lock = 0 },
+		found = {}, -- Baydex: [defId] = true, survives rebirth (lives here, not on owned entries)
 		giftsGiven = 0,
 	}
 end
@@ -44,6 +46,26 @@ function State.getPlayer(player)
 		return nil
 	end
 	return State.players[player.UserId]
+end
+
+-- Push the player's Baydex found set to their client.
+function State.sendIndex(player)
+	local data = State.getPlayer(player)
+	if not data then
+		return
+	end
+	Remotes.IndexUpdate:FireClient(player, data.found)
+end
+
+-- Mark a brainrot def as found for a player and push the update, but
+-- only when it is actually new, so banking the same def twice stays quiet.
+function State.markFound(player, defId)
+	local data = State.getPlayer(player)
+	if not data or not defId or data.found[defId] then
+		return
+	end
+	data.found[defId] = true
+	State.sendIndex(player)
 end
 
 -- Cash per second from everything this player owns: base income, doubled

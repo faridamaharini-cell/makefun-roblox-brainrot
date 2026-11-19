@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local BrainrotFactory = require(Shared:WaitForChild("BrainrotFactory"))
 
 local WorldBuilder = require(script.WorldBuilder)
 local State = require(script.State)
@@ -146,7 +147,9 @@ RunService.Heartbeat:Connect(function(_dt)
 				local slotPos = base.slots[entry.slotIndex]
 				if slotPos then
 					local bob = math.sin(now * 2 + id) * 0.2
-					entry.model:PivotTo(CFrame.new(slotPos + Vector3.new(0, 0.1 + bob, 0)))
+					-- slotPos.Y is the pad top; pivot is the Body centre,
+					-- PIVOT_ABOVE_FEET above the feet.
+					entry.model:PivotTo(CFrame.new(slotPos + Vector3.new(0, 0.1 + BrainrotFactory.PIVOT_ABOVE_FEET + bob, 0)))
 				end
 			end
 		end

@@ -53,7 +53,9 @@ function SpawnService.spawnOne(forceRarity)
 
 	local model = BrainrotFactory.buildBrainrotModel(def, mutation)
 	model:SetAttribute("BrainrotId", id)
-	model:PivotTo(CFrame.new(0, 1, Config.ConveyorStartZ))
+	-- Pivot is the Body centre: place it PIVOT_ABOVE_FEET above the
+	-- conveyor top (Y=1) so the feet stand on the belt, not under it.
+	model:PivotTo(CFrame.new(0, 1 + BrainrotFactory.PIVOT_ABOVE_FEET, Config.ConveyorStartZ))
 	model.Parent = walkersFolder
 
 	local prompt = model:FindFirstChild("InteractPrompt", true)
@@ -108,7 +110,7 @@ function SpawnService.start()
 				else
 					-- A gentle waddle: side-to-side sway plus a tiny bob.
 					local sway = math.sin(os.clock() * 4 + id) * 0.8
-					model:PivotTo(CFrame.new(sway, 1 + math.abs(math.sin(os.clock() * 6 + id)) * 0.15, newZ))
+					model:PivotTo(CFrame.new(sway, 1 + BrainrotFactory.PIVOT_ABOVE_FEET + math.abs(math.sin(os.clock() * 6 + id)) * 0.15, newZ))
 				end
 			end
 		end

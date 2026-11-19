@@ -33,6 +33,11 @@ local SLOT_ROWS = { -8, 0, 8 }
 -- beach (and everything standing on it) uses this as its ground level.
 local BEACH_TOP_Y = 0.2
 
+-- Building scale: v3.2 makes the town's buildings ~1.4x bigger (Rot Ranch
+-- reference), scaled around each building's own ground centre. Every
+-- building helper multiplies its widths, heights and offsets by BS.
+local BS = 1.4
+
 local function part(name, size, color, position, parent, material, collide)
 	local p = Instance.new("Part")
 	p.Name = name
@@ -128,24 +133,24 @@ local function pitchedRoof(parent, center, halfSpan, rise, len, color, ridgeAxis
 	for _, side in ipairs({ -1, 1 }) do
 		local panel
 		if ridgeAxis == "X" then
-			panel = part("RoofPanel", Vector3.new(len, 0.4, slopeLen), color, center + Vector3.new(0, -rise / 2, side * halfSpan / 2), parent, Enum.Material.SmoothPlastic, false)
+			panel = part("RoofPanel", Vector3.new(len, 0.4 * BS, slopeLen), color, center + Vector3.new(0, -rise / 2, side * halfSpan / 2), parent, Enum.Material.SmoothPlastic, false)
 			panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(side * angle, 0, 0)
 		else
-			panel = part("RoofPanel", Vector3.new(slopeLen, 0.4, len), color, center + Vector3.new(side * halfSpan / 2, -rise / 2, 0), parent, Enum.Material.SmoothPlastic, false)
+			panel = part("RoofPanel", Vector3.new(slopeLen, 0.4 * BS, len), color, center + Vector3.new(side * halfSpan / 2, -rise / 2, 0), parent, Enum.Material.SmoothPlastic, false)
 			panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(0, 0, -side * angle)
 		end
 	end
 	if ridgeAxis == "X" then
-		part("RidgeBeam", Vector3.new(len, 0.6, 0.6), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
+		part("RidgeBeam", Vector3.new(len, 0.6 * BS, 0.6 * BS), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
 	else
-		part("RidgeBeam", Vector3.new(0.6, 0.6, len), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
+		part("RidgeBeam", Vector3.new(0.6 * BS, 0.6 * BS, len), Color3.fromRGB(90, 60, 35), center, parent, Enum.Material.Wood)
 	end
 end
 
 -- A window on a wall facing +/-X: white frame + light-blue glass.
 local function xWindow(parent, x, y, z, facing)
-	part("WindowFrame", Vector3.new(0.2, 2.2, 2.6), Color3.fromRGB(255, 255, 255), Vector3.new(x + facing * 0.1, y, z), parent, Enum.Material.SmoothPlastic, false)
-	part("WindowGlass", Vector3.new(0.26, 1.8, 2.2), Color3.fromRGB(150, 210, 255), Vector3.new(x + facing * 0.14, y, z), parent, Enum.Material.Glass, false)
+	part("WindowFrame", Vector3.new(0.2 * BS, 2.2 * BS, 2.6 * BS), Color3.fromRGB(255, 255, 255), Vector3.new(x + facing * 0.1 * BS, y, z), parent, Enum.Material.SmoothPlastic, false)
+	part("WindowGlass", Vector3.new(0.26 * BS, 1.8 * BS, 2.2 * BS), Color3.fromRGB(150, 210, 255), Vector3.new(x + facing * 0.14 * BS, y, z), parent, Enum.Material.Glass, false)
 end
 
 -- A detailed beach house: wood walls, white base trim, door + windows on
@@ -156,25 +161,25 @@ local function house(parent, pos, wallColor, roofColor, facing, index)
 	local home = Instance.new("Folder")
 	home.Name = "House" .. index
 	home.Parent = parent
-	local W, D, H = 10, 8, 7
+	local W, D, H = 10 * BS, 8 * BS, 7 * BS
 	local baseY = BEACH_TOP_Y
 	part("Walls", Vector3.new(W, H, D), wallColor, pos + Vector3.new(0, baseY + H / 2, 0), home, Enum.Material.Wood)
-	part("BaseTrim", Vector3.new(W + 0.4, 0.5, D + 0.4), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25, 0), home, Enum.Material.SmoothPlastic, false)
+	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.5 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25 * BS, 0), home, Enum.Material.SmoothPlastic, false)
 	local faceX = pos.X + facing * (W / 2)
-	part("Door", Vector3.new(0.3, 3.6, 2), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16, baseY + 1.8, pos.Z), home, Enum.Material.Wood)
-	xWindow(home, faceX, baseY + 3.6, pos.Z - 2.6, facing)
-	xWindow(home, faceX, baseY + 3.6, pos.Z + 2.6, facing)
-	local ridgeY = baseY + H + 3
-	pitchedRoof(home, Vector3.new(pos.X, ridgeY, pos.Z), W / 2 + 1, 3, D + 1, roofColor, "Z")
-	local cx = pos.X + 3
-	part("Chimney", Vector3.new(1.2, 3, 1.2), Color3.fromRGB(150, 60, 60), Vector3.new(cx, ridgeY - 1, pos.Z - 2), home, Enum.Material.SmoothPlastic)
-	part("ChimneyCap", Vector3.new(1.8, 0.5, 1.8), Color3.fromRGB(90, 60, 35), Vector3.new(cx, ridgeY + 0.7, pos.Z - 2), home, Enum.Material.SmoothPlastic, false)
-	local porchX = faceX + facing * 1.6
-	part("PorchFloor", Vector3.new(3, 0.3, 4.5), Color3.fromRGB(150, 100, 55), Vector3.new(porchX, baseY + 0.15, pos.Z), home, Enum.Material.Wood)
-	for _, pz in ipairs({ -1.8, 1.8 }) do
-		part("PorchPost", Vector3.new(0.5, 4.4, 0.5), Color3.fromRGB(90, 60, 35), Vector3.new(porchX + facing * 1.2, baseY + 2.2, pos.Z + pz), home, Enum.Material.Wood)
+	part("Door", Vector3.new(0.3 * BS, 3.6 * BS, 2 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16 * BS, baseY + 1.8 * BS, pos.Z), home, Enum.Material.Wood)
+	xWindow(home, faceX, baseY + 3.6 * BS, pos.Z - 2.6 * BS, facing)
+	xWindow(home, faceX, baseY + 3.6 * BS, pos.Z + 2.6 * BS, facing)
+	local ridgeY = baseY + H + 3 * BS
+	pitchedRoof(home, Vector3.new(pos.X, ridgeY, pos.Z), W / 2 + 1 * BS, 3 * BS, D + 1 * BS, roofColor, "Z")
+	local cx = pos.X + 3 * BS
+	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(cx, ridgeY - 1 * BS, pos.Z - 2 * BS), home, Enum.Material.SmoothPlastic)
+	part("ChimneyCap", Vector3.new(1.8 * BS, 0.5 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(cx, ridgeY + 0.7 * BS, pos.Z - 2 * BS), home, Enum.Material.SmoothPlastic, false)
+	local porchX = faceX + facing * 1.6 * BS
+	part("PorchFloor", Vector3.new(3 * BS, 0.3 * BS, 4.5 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(porchX, baseY + 0.15 * BS, pos.Z), home, Enum.Material.Wood)
+	for _, pz in ipairs({ -1.8 * BS, 1.8 * BS }) do
+		part("PorchPost", Vector3.new(0.5 * BS, 4.4 * BS, 0.5 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(porchX + facing * 1.2 * BS, baseY + 2.2 * BS, pos.Z + pz), home, Enum.Material.Wood)
 	end
-	local awn = part("PorchAwning", Vector3.new(3.2, 0.25, 4.6), roofColor, Vector3.new(porchX + facing * 0.4, baseY + 4.4, pos.Z), home, Enum.Material.Fabric, false)
+	local awn = part("PorchAwning", Vector3.new(3.2 * BS, 0.25 * BS, 4.6 * BS), roofColor, Vector3.new(porchX + facing * 0.4 * BS, baseY + 4.4 * BS, pos.Z), home, Enum.Material.Fabric, false)
 	awn.CFrame = CFrame.new(awn.Position) * CFrame.Angles(0, 0, facing * math.rad(-12))
 end
 
@@ -185,32 +190,32 @@ local function barn(parent, pos, wallColor, roofColor, index)
 	local b = Instance.new("Folder")
 	b.Name = "Barn" .. index
 	b.Parent = parent
-	local W, D, H = 14, 10, 9
+	local W, D, H = 14 * BS, 10 * BS, 9 * BS
 	local baseY = BEACH_TOP_Y
 	part("Walls", Vector3.new(W, H, D), wallColor, pos + Vector3.new(0, baseY + H / 2, 0), b, Enum.Material.Wood)
-	part("BaseTrim", Vector3.new(W + 0.4, 0.5, D + 0.4), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25, 0), b, Enum.Material.SmoothPlastic, false)
+	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.5 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25 * BS, 0), b, Enum.Material.SmoothPlastic, false)
 	local faceZ = pos.Z + D / 2
-	for _, dx in ipairs({ -1.3, 1.3 }) do
-		part("BarnDoor", Vector3.new(2.4, 4.6, 0.3), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + dx, baseY + 2.3, faceZ + 0.16), b, Enum.Material.Wood)
+	for _, dx in ipairs({ -1.3 * BS, 1.3 * BS }) do
+		part("BarnDoor", Vector3.new(2.4 * BS, 4.6 * BS, 0.3 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + dx, baseY + 2.3 * BS, faceZ + 0.16 * BS), b, Enum.Material.Wood)
 	end
-	part("DoorBeam", Vector3.new(5.6, 0.5, 0.35), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 4.9, faceZ + 0.16), b, Enum.Material.Wood)
-	part("LoftDoor", Vector3.new(2, 2, 0.3), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 7, faceZ + 0.16), b, Enum.Material.Wood)
-	part("LoftBeam", Vector3.new(3, 0.4, 0.4), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 8.3, faceZ + 0.2), b, Enum.Material.Wood)
+	part("DoorBeam", Vector3.new(5.6 * BS, 0.5 * BS, 0.35 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 4.9 * BS, faceZ + 0.16 * BS), b, Enum.Material.Wood)
+	part("LoftDoor", Vector3.new(2 * BS, 2 * BS, 0.3 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 7 * BS, faceZ + 0.16 * BS), b, Enum.Material.Wood)
+	part("LoftBeam", Vector3.new(3 * BS, 0.4 * BS, 0.4 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X, baseY + 8.3 * BS, faceZ + 0.2 * BS), b, Enum.Material.Wood)
 	for _, sx in ipairs({ -1, 1 }) do
 		local wx = pos.X + sx * (W / 2)
-		xWindow(b, wx, baseY + 4.5, pos.Z - 2.5, sx)
-		xWindow(b, wx, baseY + 4.5, pos.Z + 2.5, sx)
+		xWindow(b, wx, baseY + 4.5 * BS, pos.Z - 2.5 * BS, sx)
+		xWindow(b, wx, baseY + 4.5 * BS, pos.Z + 2.5 * BS, sx)
 	end
-	local ridgeY = baseY + H + 3.5
-	pitchedRoof(b, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1, 3.5, W + 1, roofColor, "X")
-	part("Chimney", Vector3.new(1.2, 3, 1.2), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X - 3, ridgeY - 1, pos.Z + 3), b, Enum.Material.SmoothPlastic)
-	part("ChimneyCap", Vector3.new(1.8, 0.5, 1.8), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X - 3, ridgeY + 0.7, pos.Z + 3), b, Enum.Material.SmoothPlastic, false)
-	local porchZ = faceZ + 1.6
-	part("PorchFloor", Vector3.new(6, 0.3, 3), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X, baseY + 0.15, porchZ), b, Enum.Material.Wood)
-	for _, px in ipairs({ -2.6, 2.6 }) do
-		part("PorchPost", Vector3.new(0.5, 5.4, 0.5), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + px, baseY + 2.9, porchZ + 1.2), b, Enum.Material.Wood)
+	local ridgeY = baseY + H + 3.5 * BS
+	pitchedRoof(b, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1 * BS, 3.5 * BS, W + 1 * BS, roofColor, "X")
+	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X - 3 * BS, ridgeY - 1 * BS, pos.Z + 3 * BS), b, Enum.Material.SmoothPlastic)
+	part("ChimneyCap", Vector3.new(1.8 * BS, 0.5 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X - 3 * BS, ridgeY + 0.7 * BS, pos.Z + 3 * BS), b, Enum.Material.SmoothPlastic, false)
+	local porchZ = faceZ + 1.6 * BS
+	part("PorchFloor", Vector3.new(6 * BS, 0.3 * BS, 3 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X, baseY + 0.15 * BS, porchZ), b, Enum.Material.Wood)
+	for _, px in ipairs({ -2.6 * BS, 2.6 * BS }) do
+		part("PorchPost", Vector3.new(0.5 * BS, 5.4 * BS, 0.5 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + px, baseY + 2.9 * BS, porchZ + 1.2 * BS), b, Enum.Material.Wood)
 	end
-	local awn = part("PorchAwning", Vector3.new(6.2, 0.25, 3.2), roofColor, Vector3.new(pos.X, baseY + 5.4, porchZ + 0.4), b, Enum.Material.Fabric, false)
+	local awn = part("PorchAwning", Vector3.new(6.2 * BS, 0.25 * BS, 3.2 * BS), roofColor, Vector3.new(pos.X, baseY + 5.4 * BS, porchZ + 0.4 * BS), b, Enum.Material.Fabric, false)
 	awn.CFrame = CFrame.new(awn.Position) * CFrame.Angles(math.rad(12), 0, 0)
 end
 
@@ -220,27 +225,27 @@ local function shop(parent, pos, wallColor, roofColor, index)
 	local s = Instance.new("Folder")
 	s.Name = "Shop" .. index
 	s.Parent = parent
-	local W, D, H = 11, 9, 7
+	local W, D, H = 11 * BS, 9 * BS, 7 * BS
 	local baseY = BEACH_TOP_Y
 	part("Walls", Vector3.new(W, H, D), wallColor, pos + Vector3.new(0, baseY + H / 2, 0), s, Enum.Material.Wood)
-	part("BaseTrim", Vector3.new(W + 0.4, 0.5, D + 0.4), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25, 0), s, Enum.Material.SmoothPlastic, false)
+	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.5 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.25 * BS, 0), s, Enum.Material.SmoothPlastic, false)
 	local faceZ = pos.Z + D / 2
-	part("Door", Vector3.new(2, 3.6, 0.3), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X - 2.5, baseY + 1.8, faceZ + 0.16), s, Enum.Material.Wood)
-	part("ShopWindowFrame", Vector3.new(4.5, 2.6, 0.2), Color3.fromRGB(255, 255, 255), Vector3.new(pos.X + 2, baseY + 3.4, faceZ + 0.1), s, Enum.Material.SmoothPlastic, false)
-	part("ShopWindowGlass", Vector3.new(4.1, 2.2, 0.26), Color3.fromRGB(150, 210, 255), Vector3.new(pos.X + 2, baseY + 3.4, faceZ + 0.14), s, Enum.Material.Glass, false)
-	xWindow(s, pos.X + W / 2, baseY + 3.6, pos.Z, 1)
-	xWindow(s, pos.X - W / 2, baseY + 3.6, pos.Z, -1)
-	signBoard(s, Vector3.new(pos.X, baseY + 5.8, faceZ + 0.4), "TIDE SHOP", Color3.fromRGB(255, 220, 80), Vector3.new(8, 2.5, 0.4))
-	local ridgeY = baseY + H + 3
-	pitchedRoof(s, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1, 3, W + 1, roofColor, "X")
-	part("Chimney", Vector3.new(1.2, 3, 1.2), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X + 3, ridgeY - 1, pos.Z + 2), s, Enum.Material.SmoothPlastic)
-	part("ChimneyCap", Vector3.new(1.8, 0.5, 1.8), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + 3, ridgeY + 0.7, pos.Z + 2), s, Enum.Material.SmoothPlastic, false)
+	part("Door", Vector3.new(2 * BS, 3.6 * BS, 0.3 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X - 2.5 * BS, baseY + 1.8 * BS, faceZ + 0.16 * BS), s, Enum.Material.Wood)
+	part("ShopWindowFrame", Vector3.new(4.5 * BS, 2.6 * BS, 0.2 * BS), Color3.fromRGB(255, 255, 255), Vector3.new(pos.X + 2 * BS, baseY + 3.4 * BS, faceZ + 0.1 * BS), s, Enum.Material.SmoothPlastic, false)
+	part("ShopWindowGlass", Vector3.new(4.1 * BS, 2.2 * BS, 0.26 * BS), Color3.fromRGB(150, 210, 255), Vector3.new(pos.X + 2 * BS, baseY + 3.4 * BS, faceZ + 0.14 * BS), s, Enum.Material.Glass, false)
+	xWindow(s, pos.X + W / 2, baseY + 3.6 * BS, pos.Z, 1)
+	xWindow(s, pos.X - W / 2, baseY + 3.6 * BS, pos.Z, -1)
+	signBoard(s, Vector3.new(pos.X, baseY + 5.8 * BS, faceZ + 0.4 * BS), "TIDE SHOP", Color3.fromRGB(255, 220, 80), Vector3.new(8 * BS, 2.5 * BS, 0.4 * BS))
+	local ridgeY = baseY + H + 3 * BS
+	pitchedRoof(s, Vector3.new(pos.X, ridgeY, pos.Z), D / 2 + 1 * BS, 3 * BS, W + 1 * BS, roofColor, "X")
+	part("Chimney", Vector3.new(1.2 * BS, 3 * BS, 1.2 * BS), Color3.fromRGB(150, 60, 60), Vector3.new(pos.X + 3 * BS, ridgeY - 1 * BS, pos.Z + 2 * BS), s, Enum.Material.SmoothPlastic)
+	part("ChimneyCap", Vector3.new(1.8 * BS, 0.5 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(pos.X + 3 * BS, ridgeY + 0.7 * BS, pos.Z + 2 * BS), s, Enum.Material.SmoothPlastic, false)
 	for i = 0, 2 do
 		local color = (i % 2 == 0) and roofColor or Color3.fromRGB(255, 255, 255)
-		local panel = part("ShopAwning", Vector3.new(1.6, 0.25, 2.2), color, Vector3.new(pos.X + 0.4 + i * 1.6, baseY + 5.0, faceZ + 0.9), s, Enum.Material.Fabric, false)
+		local panel = part("ShopAwning", Vector3.new(1.6 * BS, 0.25 * BS, 2.2 * BS), color, Vector3.new(pos.X + 0.4 * BS + i * 1.6 * BS, baseY + 5.0 * BS, faceZ + 0.9 * BS), s, Enum.Material.Fabric, false)
 		panel.CFrame = CFrame.new(panel.Position) * CFrame.Angles(math.rad(12), 0, 0)
 	end
-	part("PorchFloor", Vector3.new(4, 0.3, 2.5), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X - 2.5, baseY + 0.15, faceZ + 1.4), s, Enum.Material.Wood)
+	part("PorchFloor", Vector3.new(4 * BS, 0.3 * BS, 2.5 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X - 2.5 * BS, baseY + 0.15 * BS, faceZ + 1.4 * BS), s, Enum.Material.Wood)
 end
 
 -- A small hut with a single-slope (shed) roof, door + windows on the
@@ -249,17 +254,17 @@ local function hut(parent, pos, wallColor, roofColor, facing, index)
 	local h = Instance.new("Folder")
 	h.Name = "Hut" .. index
 	h.Parent = parent
-	local W, D, H = 8, 7, 6
+	local W, D, H = 8 * BS, 7 * BS, 6 * BS
 	local baseY = BEACH_TOP_Y
 	part("Walls", Vector3.new(W, H, D), wallColor, pos + Vector3.new(0, baseY + H / 2, 0), h, Enum.Material.Wood)
-	part("BaseTrim", Vector3.new(W + 0.4, 0.4, D + 0.4), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.2, 0), h, Enum.Material.SmoothPlastic, false)
+	part("BaseTrim", Vector3.new(W + 0.4 * BS, 0.4 * BS, D + 0.4 * BS), Color3.fromRGB(255, 255, 255), pos + Vector3.new(0, baseY + 0.2 * BS, 0), h, Enum.Material.SmoothPlastic, false)
 	local faceX = pos.X + facing * (W / 2)
-	part("Door", Vector3.new(0.3, 3.2, 1.8), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16, baseY + 1.6, pos.Z), h, Enum.Material.Wood)
-	xWindow(h, faceX, baseY + 3.4, pos.Z - 2.2, facing)
-	xWindow(h, faceX, baseY + 3.4, pos.Z + 2.2, facing)
-	local roof = part("ShedRoof", Vector3.new(W + 1.5, 0.35, D + 1), roofColor, Vector3.new(pos.X, baseY + H + 1.6, pos.Z), h, Enum.Material.SmoothPlastic, false)
+	part("Door", Vector3.new(0.3 * BS, 3.2 * BS, 1.8 * BS), Color3.fromRGB(90, 60, 35), Vector3.new(faceX + facing * 0.16 * BS, baseY + 1.6 * BS, pos.Z), h, Enum.Material.Wood)
+	xWindow(h, faceX, baseY + 3.4 * BS, pos.Z - 2.2 * BS, facing)
+	xWindow(h, faceX, baseY + 3.4 * BS, pos.Z + 2.2 * BS, facing)
+	local roof = part("ShedRoof", Vector3.new(W + 1.5 * BS, 0.35 * BS, D + 1 * BS), roofColor, Vector3.new(pos.X, baseY + H + 1.6 * BS, pos.Z), h, Enum.Material.SmoothPlastic, false)
 	roof.CFrame = CFrame.new(roof.Position) * CFrame.Angles(0, 0, facing * math.rad(-20))
-	local awn = part("HutAwning", Vector3.new(2.8, 0.25, 3.4), roofColor, Vector3.new(faceX + facing * 0.9, baseY + 5.2, pos.Z), h, Enum.Material.Fabric, false)
+	local awn = part("HutAwning", Vector3.new(2.8 * BS, 0.25 * BS, 3.4 * BS), roofColor, Vector3.new(faceX + facing * 0.9 * BS, baseY + 5.2 * BS, pos.Z), h, Enum.Material.Fabric, false)
 	awn.CFrame = CFrame.new(awn.Position) * CFrame.Angles(0, 0, facing * math.rad(-12))
 end
 
@@ -271,11 +276,11 @@ local function gatehouse(parent, pos)
 	g.Parent = parent
 	local baseY = BEACH_TOP_Y
 	for _, sx in ipairs({ -1, 1 }) do
-		part("GateTower", Vector3.new(3, 9, 3), Color3.fromRGB(255, 200, 60), Vector3.new(pos.X + sx * 10, baseY + 4.5, pos.Z), g, Enum.Material.SmoothPlastic)
-		part("TowerCap", Vector3.new(3.8, 0.6, 3.8), Color3.fromRGB(200, 120, 255), Vector3.new(pos.X + sx * 10, baseY + 9.3, pos.Z), g, Enum.Material.SmoothPlastic, false)
+		part("GateTower", Vector3.new(3 * BS, 9 * BS, 3 * BS), Color3.fromRGB(255, 200, 60), Vector3.new(pos.X + sx * 10 * BS, baseY + 4.5 * BS, pos.Z), g, Enum.Material.SmoothPlastic)
+		part("TowerCap", Vector3.new(3.8 * BS, 0.6 * BS, 3.8 * BS), Color3.fromRGB(200, 120, 255), Vector3.new(pos.X + sx * 10 * BS, baseY + 9.3 * BS, pos.Z), g, Enum.Material.SmoothPlastic, false)
 	end
-	part("GateBeam", Vector3.new(23, 2, 3), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X, baseY + 9.5, pos.Z), g, Enum.Material.Wood)
-	pitchedRoof(g, Vector3.new(pos.X, baseY + 11.5, pos.Z), 2.5, 1.5, 24, Color3.fromRGB(255, 90, 90), "Z")
+	part("GateBeam", Vector3.new(23 * BS, 2 * BS, 3 * BS), Color3.fromRGB(150, 100, 55), Vector3.new(pos.X, baseY + 9.5 * BS, pos.Z), g, Enum.Material.Wood)
+	pitchedRoof(g, Vector3.new(pos.X, baseY + 11.5 * BS, pos.Z), 2.5 * BS, 1.5 * BS, 24 * BS, Color3.fromRGB(255, 90, 90), "Z")
 end
 
 -- A wooden fence run along Z: posts every ~10 studs + two rails.
@@ -530,10 +535,10 @@ function WorldBuilder.build()
 	barn(buildings, Vector3.new(-45, 0, -178), Color3.fromRGB(200, 60, 60), Color3.fromRGB(90, 60, 35), 1)
 	shop(buildings, Vector3.new(45, 0, -178), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 160, 255), 1)
 	-- Houses flanking the conveyor, fronts facing the conveyor.
-	house(buildings, Vector3.new(-20, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
-	house(buildings, Vector3.new(20, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
-	house(buildings, Vector3.new(-20, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
-	house(buildings, Vector3.new(20, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
+	house(buildings, Vector3.new(-22, 0, -30), Color3.fromRGB(120, 220, 120), Color3.fromRGB(200, 60, 60), 1, 1)
+	house(buildings, Vector3.new(22, 0, -30), Color3.fromRGB(90, 160, 255), Color3.fromRGB(255, 200, 60), -1, 2)
+	house(buildings, Vector3.new(-22, 0, 30), Color3.fromRGB(200, 120, 255), Color3.fromRGB(90, 220, 210), 1, 3)
+	house(buildings, Vector3.new(22, 0, 30), Color3.fromRGB(255, 140, 200), Color3.fromRGB(120, 220, 120), -1, 4)
 	-- Smaller huts further down the conveyor.
 	hut(buildings, Vector3.new(-20, 0, -90), Color3.fromRGB(255, 160, 80), Color3.fromRGB(90, 160, 255), 1, 1)
 	hut(buildings, Vector3.new(20, 0, 90), Color3.fromRGB(140, 220, 255), Color3.fromRGB(200, 60, 60), -1, 2)

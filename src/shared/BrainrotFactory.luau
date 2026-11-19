@@ -7,6 +7,14 @@ local BrainrotData = require(script.Parent.BrainrotData)
 
 local BrainrotFactory = {}
 
+-- Characters are built big: MODEL_SCALE 1.5 makes a ~5.7-stud character
+-- ~8.6 studs tall, so they read as big creatures next to the player (like
+-- the Rot Ranch animals). The model pivot is the Body centre, which sits
+-- 2.5 studs above the feet before scaling, so callers must place the pivot
+-- PIVOT_ABOVE_FEET above the surface they stand on.
+BrainrotFactory.MODEL_SCALE = 1.5
+BrainrotFactory.PIVOT_ABOVE_FEET = 2.5 * BrainrotFactory.MODEL_SCALE
+
 -- Per-mutation tint overrides. Normal keeps the character's own colours.
 -- Shadow and Lava also switch the body to Neon so they glow on the conveyor.
 local MUTATION_TINTS = {
@@ -235,6 +243,15 @@ function BrainrotFactory.buildBrainrotModel(def, mutation)
 	model:SetAttribute("Price", BrainrotData.priceFor(def, mutation))
 	model:SetAttribute("Income", BrainrotData.incomeFor(def, mutation))
 	model:SetAttribute("State", "walking")
+
+	-- Scale the whole character up around its pivot (the Body centre, so
+	-- the pivot stays put and the feet drop to -PIVOT_ABOVE_FEET below it).
+	-- The label's Size and StudsOffsetWorldSpace are GUI properties that
+	-- ScaleTo does not touch, so scale them by hand to keep the name
+	-- floating above the bigger head, in proportion.
+	model:ScaleTo(BrainrotFactory.MODEL_SCALE)
+	billboard.Size = UDim2.new(0, 130 * BrainrotFactory.MODEL_SCALE, 0, 66 * BrainrotFactory.MODEL_SCALE)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.8 * BrainrotFactory.MODEL_SCALE, 0)
 
 	return model
 end

@@ -33,6 +33,7 @@ Buy brainrots off the conveyor, fill your base, and watch the money tick up. The
 - **Rebirths:** each rebirth doubles your income forever, so the late game is about timing the reset. Your first rebirth unlocks Poseidon Tier and adds a gold pedestal to your base — one more pedestal per rebirth.
 - **The HUD:** big money and income display top-centre (with the "BRAINROT BAY" title), GOALS ladder on the left, event banner below the money panel, toast messages for buys, steals, waves and rewards, and a context line at the bottom that tells you exactly what the nearest brainrot costs, earns, and whether you can buy, steal, or slap for it.
 - **Economy:** every brainrot pays for itself in exactly ~40 seconds at every tier (Normal mutation).
+- **The world:** a dense real-world bay — a residential street with a park and pond, a working farm with a spinning windmill and crop fields, a south beach resort with umbrellas, a beach bar and a lifeguard tower, a north seafront promenade, and three forest groves, all joined by stone paths and wooden boardwalks. Twenty-one live animals roam, swim and fly: cows, pigs, chickens, dogs, horses, ducks, sheep, goats, cats, rabbits, foxes, deer, frogs, turtles, crabs, seagulls, fish, birds and butterflies — plus a straight-standing lighthouse with rotating beams.
 
 ## How it is built
 

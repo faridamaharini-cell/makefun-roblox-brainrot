@@ -36,7 +36,7 @@ local Config = {
 	WaveWidth = 340,
 
 	-- Starting cash
-	StartingMoney = 100,
+	StartingMoney = 2000,
 
 	-- Golden Hour event (double income while active)
 	GoldenHourCycle = 240,
